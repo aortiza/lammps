@@ -1,25 +1,19 @@
-# bgl = LLNL Blue Gene Light machine, xlC, native MPI, FFTW
+# cygwin-serial = Windows Cygwin, gcc-5.4.0, no MPI, MPICH, FFTW
 
 SHELL = /bin/sh
-.SUFFIXES: .cpp .u 
 
 # ---------------------------------------------------------------------
 # compiler/linker settings
 # specify flags and libraries needed for your compiler
 
-CC =		/opt/ibmcmp/vacpp/7.0/bin/blrts_xlC
-CCFLAGS =	-O3
+CC =		g++
+CCFLAGS =	-O
 SHFLAGS =	-fPIC
 DEPFLAGS =	-M
 
-LINK =		/opt/ibmcmp/vacpp/7.0/bin/blrts_xlC
-LINKFLAGS =	-O \
-                -L/opt/ibmcmp/xlf/9.1/blrts_lib \
-                -L/opt/ibmcmp/vacpp/7.0/blrts_lib \
-                -L/bgl/local/lib \
-                -L/bgl/local/bglfftwgel-2.1.5.pre5/lib
-LIB =           -lxlopt -lxlomp_ser -lxl -lxlfmath -lm \
-                -lmsglayer.rts -lrts.rts -ldevices.rts -lmassv
+LINK =		g++
+LINKFLAGS =	-O
+LIB =           
 SIZE =		size
 
 ARCHIVE =	ar
@@ -45,9 +39,9 @@ LMP_INC =	-DLAMMPS_GZIP
 # PATH = path for MPI library
 # LIB = name of MPI library
 
-MPI_INC =       -DMPICH_SKIP_MPICXX
-MPI_PATH = 
-MPI_LIB =	-lmpich.rts 
+MPI_INC =	-I../STUBS
+MPI_PATH =	-L../STUBS
+MPI_LIB =	-lmpi_stubs
 
 # FFT library
 # see discussion in Section 2.2 (step 6) of manaul
@@ -56,9 +50,13 @@ MPI_LIB =	-lmpich.rts
 # PATH = path for FFT library
 # LIB = name of FFT library
 
-FFT_INC =       -DFFT_FFTW
+#FFT_INC =       -DFFT_FFTW -I/cygdrive/c/cygwin/usr/local/include
+#FFT_PATH =	-L/cygdrive/c/cygwin/usr/local/lib 
+#FFT_LIB =	-lfftw
+
+FFT_INC =
 FFT_PATH = 
-FFT_LIB =	-lfftw
+FFT_LIB =
 
 # JPEG and/or PNG library
 # see discussion in Section 2.2 (step 7) of manual

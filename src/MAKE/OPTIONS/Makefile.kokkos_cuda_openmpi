@@ -1,30 +1,28 @@
-# bgl = LLNL Blue Gene Light machine, xlC, native MPI, FFTW
+# kokkos_cuda = KOKKOS/CUDA package, OpenMPI with nvcc compiler, Kepler GPU
 
 SHELL = /bin/sh
-.SUFFIXES: .cpp .u 
 
 # ---------------------------------------------------------------------
 # compiler/linker settings
 # specify flags and libraries needed for your compiler
 
-CC =		/opt/ibmcmp/vacpp/7.0/bin/blrts_xlC
-CCFLAGS =	-O3
+KOKKOS_ABSOLUTE_PATH = $(shell cd $(KOKKOS_PATH); pwd)
+export OMPI_CXX = $(KOKKOS_ABSOLUTE_PATH)/config/nvcc_wrapper
+CC =		mpicxx
+CCFLAGS =	-g -O3
 SHFLAGS =	-fPIC
 DEPFLAGS =	-M
 
-LINK =		/opt/ibmcmp/vacpp/7.0/bin/blrts_xlC
-LINKFLAGS =	-O \
-                -L/opt/ibmcmp/xlf/9.1/blrts_lib \
-                -L/opt/ibmcmp/vacpp/7.0/blrts_lib \
-                -L/bgl/local/lib \
-                -L/bgl/local/bglfftwgel-2.1.5.pre5/lib
-LIB =           -lxlopt -lxlomp_ser -lxl -lxlfmath -lm \
-                -lmsglayer.rts -lrts.rts -ldevices.rts -lmassv
+LINK =		mpicxx
+LINKFLAGS =	-g -O3
+LIB = 
 SIZE =		size
 
 ARCHIVE =	ar
 ARFLAGS =	-rc
 SHLIBFLAGS =	-shared
+KOKKOS_DEVICES = Cuda, OpenMP
+KOKKOS_ARCH =   Kepler35
 
 # ---------------------------------------------------------------------
 # LAMMPS-specific settings, all OPTIONAL
@@ -45,9 +43,9 @@ LMP_INC =	-DLAMMPS_GZIP
 # PATH = path for MPI library
 # LIB = name of MPI library
 
-MPI_INC =       -DMPICH_SKIP_MPICXX
+MPI_INC =       -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX=1
 MPI_PATH = 
-MPI_LIB =	-lmpich.rts 
+MPI_LIB =	
 
 # FFT library
 # see discussion in Section 2.2 (step 6) of manaul
@@ -56,9 +54,9 @@ MPI_LIB =	-lmpich.rts
 # PATH = path for FFT library
 # LIB = name of FFT library
 
-FFT_INC =       -DFFT_FFTW
+FFT_INC =    	
 FFT_PATH = 
-FFT_LIB =	-lfftw
+FFT_LIB =	
 
 # JPEG and/or PNG library
 # see discussion in Section 2.2 (step 7) of manual
