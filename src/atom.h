@@ -56,7 +56,7 @@ class Atom : protected Pointers {
   tagint *molecule;
   int *molindex,*molatom;
 
-  double *q,**mu;
+  double *q,**mu,*xi;
   double **omega,**angmom,**torque;
   double *radius,*rmass;
   int *ellipsoid,*line,*tri,*body;
@@ -93,17 +93,11 @@ class Atom : protected Pointers {
   double *duChem;
   double *dpdTheta;
   int nspecies_dpd;
-
-  // USER-MESO package
-
-  double **cc, **cc_flux;        // cc = chemical concentration
-  double *edpd_temp,*edpd_flux;  // temperature and heat flux
-  double *edpd_cv;               // heat capacity 
-  int cc_species;
+  int *ssaAIR; // Shardlow Splitting Algorithm Active Interaction Region number
 
   // molecular info
 
-  int **nspecial;               // 0,1,2 = cumulative # of 1-2,1-3,1-4 neighs
+  int **nspecial;               // 0,1,2 = cummulative # of 1-2,1-3,1-4 neighs
   tagint **special;             // IDs of 1-2,1-3,1-4 neighs of each atom
   int maxspecial;               // special[nlocal][maxspecial]
 
@@ -139,12 +133,12 @@ class Atom : protected Pointers {
   int wavepacket_flag,sph_flag;
 
   int molecule_flag,molindex_flag,molatom_flag;
-  int q_flag,mu_flag;
+  int q_flag,mu_flag,xi_flag;
   int rmass_flag,radius_flag,omega_flag,torque_flag,angmom_flag;
   int vfrac_flag,spin_flag,eradius_flag,ervel_flag,erforce_flag;
   int cs_flag,csforce_flag,vforce_flag,ervelforce_flag,etag_flag;
   int rho_flag,e_flag,cv_flag,vest_flag;
-  int dpd_flag,edpd_flag,tdpd_flag;
+  int dpd_flag;
 
   // USER-SMD package
 
@@ -261,8 +255,8 @@ class Atom : protected Pointers {
   void update_callback(int);
 
   int find_custom(const char *, int &);
-  virtual int add_custom(const char *, int);
-  virtual void remove_custom(int, int);
+  int add_custom(const char *, int);
+  void remove_custom(int, int);
 
   virtual void sync_modify(ExecutionSpace, unsigned int, unsigned int) {}
 
