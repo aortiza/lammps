@@ -30,6 +30,7 @@ class FixSetDipole : public Fix {
   ~FixSetDipole();
   int setmask();
   void init();
+  void init_list(int, class NeighList *);
   void setup(int);
   void min_setup(int);
   void post_force(int);
@@ -37,14 +38,15 @@ class FixSetDipole : public Fix {
   void min_post_force(int);
   
  protected:
-  double xvalue,yvalue,zvalue;
+  double xvalue,yvalue,zvalue,cuttoffvalue,itervalue;
   int varflag;
-  char *xstr,*ystr,*zstr;
-  int xvar,yvar,zvar,xstyle,ystyle,zstyle;
+  char *xstr,*ystr,*zstr,*cuttoffstr,*iterstr;
+  int xvar,yvar,zvar,cuttoffvar,itervar,xstyle,ystyle,zstyle,cuttoffstyle,iterstyle;
   
   int maxatom;
   double **sforce;
 
+  class NeighList *list;
 
 };
 

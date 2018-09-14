@@ -18,6 +18,9 @@
 #include "domain.h"
 #include "modify.h"
 #include "respa.h"
+#include "neighbor.h"
+#include "neigh_list.h"
+#include "neigh_request.h"
 #include "input.h"
 #include "variable.h"
 #include "memory.h"
@@ -36,9 +39,10 @@ FixSetDipole::FixSetDipole(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg),
   xstr(NULL), ystr(NULL), zstr(NULL)
 {
-  if (narg != 6 ) error->all(FLERR,"Illegal fix enforce2d command");
+  if (narg < 8 ) error->all(FLERR,"Illegal fix setdipole command");
   xstr = ystr = zstr = NULL;
-
+  
+  // field vector component
   if (strstr(arg[3],"v_") == arg[3]) {
     int n = strlen(&arg[3][2]) + 1;
     xstr = new char[n];
@@ -69,6 +73,30 @@ FixSetDipole::FixSetDipole(LAMMPS *lmp, int narg, char **arg) :
     zvalue = force->numeric(FLERR,arg[5]);
     zstyle = CONSTANT;
   }
+  // End of field vector components
+  // cuttoff
+  if (strstr(arg[6],"v_") == arg[6]) {
+    int n = strlen(&arg[6][2]) + 1;
+    cuttoffstr = new char[n];
+    strcpy(cuttoffstr,&arg[6][2]);
+  } else if (strcmp(arg[6],"NULL") == 0) {
+    cuttoffstyle = NONE;
+  } else {
+    cuttoffvalue = force->numeric(FLERR,arg[6]);
+    cuttoffstyle = CONSTANT;
+  }
+  // max_iter
+  if (strstr(arg[7],"v_") == arg[7]) {
+    int n = strlen(&arg[7][2]) + 1;
+    iterstr = new char[n];
+    strcpy(iterstr,&arg[7][2]);
+  } else if (strcmp(arg[7],"NULL") == 0) {
+    iterstyle = NONE;
+  } else {
+    itervalue = force->numeric(FLERR,arg[7]);
+    itervalue = force->numeric(FLERR,arg[7]);
+    iterstyle = CONSTANT;
+  }
 
   maxatom = 1;
   memory->create(sforce,maxatom,3,"setforce:sforce");
@@ -82,6 +110,8 @@ FixSetDipole::~FixSetDipole()
   delete [] xstr;
   delete [] ystr;
   delete [] zstr;
+  delete [] cuttoffstr;
+  delete [] iterstr;
   memory->destroy(sforce);
 
 }
@@ -105,7 +135,7 @@ void FixSetDipole::init()
   if (xstr) {
     xvar = input->variable->find(xstr);
     if (xvar < 0)
-      error->all(FLERR,"Variable name for fix setforce does not exist");
+      error->all(FLERR,"Variable name for fix setdipole does not exist");
     if (input->variable->equalstyle(xvar)) xstyle = EQUAL;
     else if (input->variable->atomstyle(xvar)) xstyle = ATOM;
     else error->all(FLERR,"Variable for fix setforce is invalid style");
@@ -113,18 +143,38 @@ void FixSetDipole::init()
   if (ystr) {
     yvar = input->variable->find(ystr);
     if (yvar < 0)
-      error->all(FLERR,"Variable name for fix setforce does not exist");
+      error->all(FLERR,"Variable name for fix setdipole does not exist");
     if (input->variable->equalstyle(yvar)) ystyle = EQUAL;
     else if (input->variable->atomstyle(yvar)) ystyle = ATOM;
-    else error->all(FLERR,"Variable for fix setforce is invalid style");
+    else error->all(FLERR,"Variable for fix setdipole is invalid style");
   }
   if (zstr) {
     zvar = input->variable->find(zstr);
     if (zvar < 0)
-      error->all(FLERR,"Variable name for fix setforce does not exist");
+      error->all(FLERR,"Variable name for fix setdipole does not exist");
     if (input->variable->equalstyle(zvar)) zstyle = EQUAL;
     else if (input->variable->atomstyle(zvar)) zstyle = ATOM;
-    else error->all(FLERR,"Variable for fix setforce is invalid style");
+    else error->all(FLERR,"Variable for fix setdipole is invalid style");
+  }
+  
+  // cuttoff
+  if (cuttoffstr) {
+    cuttoffvar = input->variable->find(cuttoffstr);
+    if (cuttoffvar < 0)
+      error->all(FLERR,"Variable name for fix setdipole does not exist");
+    if (input->variable->equalstyle(cuttoffvar)) cuttoffstyle = EQUAL;
+    else if (input->variable->atomstyle(cuttoffvar)) cuttoffstyle = ATOM;
+    else error->all(FLERR,"Variable for fix setdipole is invalid style");
+  }
+  
+  // max_iter
+  if (iterstr) {
+    itervar = input->variable->find(iterstr);
+    if (itervar < 0)
+      error->all(FLERR,"Variable name for fix setdipole does not exist");
+    if (input->variable->equalstyle(itervar)) iterstyle = EQUAL;
+    else if (input->variable->atomstyle(itervar)) iterstyle = ATOM;
+    else error->all(FLERR,"Variable for fix setdipole is invalid style");
   }
   
   if (xstyle == ATOM || ystyle == ATOM || zstyle == ATOM)
@@ -145,6 +195,19 @@ void FixSetDipole::init()
   if (flag)
     error->all(FLERR,"Cannot use non-zero forces in an energy minimization");
 
+  // Create neighbor request
+  int irequest = neighbor->request(this,instance_me);
+/*   neighbor->requests[irequest]->pair = 0;
+  neighbor->requests[irequest]->fix = 1;
+  neighbor->requests[irequest]->half = 0;
+  neighbor->requests[irequest]->full = 1; */
+  
+}
+
+/* ---------------------------------------------------------------------- */
+void FixSetDipole::init_list(int id, NeighList *ptr)
+{
+  list = ptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -174,6 +237,8 @@ void FixSetDipole::min_setup(int vflag)
 
 void FixSetDipole::post_force(int vflag)
 {
+  int inum, ii, jnum;
+  int *ilist,*numneigh,**firstneigh;
   double **mu = atom->mu;
   double *xi = atom->xi;
   double *radius = atom->radius;
@@ -182,6 +247,14 @@ void FixSetDipole::post_force(int vflag)
   double volume;
   double pi43 = 4.0/3.0*3.14159265358979323846;
   
+  // The neighbor list is built when it is instantiated
+  printf("creating lists ... ");
+  inum = list->inum;
+  ilist = list->ilist;
+  numneigh = list->numneigh;
+  firstneigh = list->firstneigh;
+  printf("lists created \n");
+
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
   
   if (varflag == ATOM && atom->nmax > maxatom) {
@@ -190,21 +263,23 @@ void FixSetDipole::post_force(int vflag)
     memory->create(sforce,maxatom,3,"setforce:sforce");
   }
 
-	if (varflag == CONSTANT) {
+	if (varflag == CONSTANT) 
+	{
 	  for (int i = 0; i < nlocal; i++)
-		if (mask[i] & groupbit) {
+		if (mask[i] & groupbit) 
+		{
 /* 			printf("value = [%f,%f,%f]\n",xvalue,yvalue,zvalue);
 			printf("var = [%f,%f,%f]\n",xvar,xvar,xvar);
 			printf("mu = [%f,%f,%f]\n",mu[i][0],mu[i][1],mu[i][2]);
- */			
-			volume = pi43*radius[i]*radius[i]*radius[i];
+
+			
 			if (xstyle) mu[i][0] = xvalue*volume*xi[i];
 			if (ystyle) mu[i][1] = yvalue*volume*xi[i];
-			if (zstyle) mu[i][2] = zvalue*volume*xi[i];
-			mu[i][3] = sqrt(mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2]);
-
+			if (zstyle) mu[i][2] = zvalue*volume*xi[i]; */
 		}
-	} else {
+	} else 
+	{
+
 		modify->clearstep_compute();
 
 		if (xstyle == EQUAL) xvalue = input->variable->compute_equal(xvar);
@@ -224,17 +299,37 @@ void FixSetDipole::post_force(int vflag)
 /* 				printf("value = [%f,%f,%f]\n",xvalue,yvalue,zvalue);
 				printf("var = [%f,%f,%f]\n",xvar,xvar,xvar);
 				printf("mu = [%f,%f,%f]\n",mu[i][0],mu[i][1],mu[i][2]);
-*/				volume = pi43*radius[i]*radius[i]*radius[i];
+*/				
 				//printf("sforce=%e ,zvalue = %e \n",sforce[i][2],zvalue);
- 				if (xstyle == ATOM) mu[i][0] = sforce[i][0]*volume*xi[i];
-				else if (xstyle) mu[i][0] = xvalue*volume*xi[i];
-				if (ystyle == ATOM) mu[i][1] = sforce[i][1]*volume*xi[i];
-				else if (ystyle) mu[i][1] = yvalue*volume*xi[i];
-				if (zstyle == ATOM) mu[i][2] = sforce[i][2]*volume*xi[i];
-				else if (zstyle) mu[i][2] = zvalue*volume*xi[i];
-				mu[i][3] = sqrt(mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2]);
+ 				if (xstyle == ATOM) xvalue = sforce[i][0];
+				if (ystyle == ATOM) yvalue = sforce[i][1];
+				if (zstyle == ATOM) zvalue = sforce[i][2];
 			}
+		
 	}
+	
+	printf("list");
+	for (int i=0; i<nlocal; i++)
+		if (mask[i] & groupbit) {
+			
+			volume = pi43*radius[i]*radius[i]*radius[i];
+			
+			mu[i][0] = xvalue*volume*xi[i];
+			mu[i][1] = yvalue*volume*xi[i];
+			mu[i][2] = zvalue*volume*xi[i];
+			
+			printf("building list\n");
+			
+			ii = ilist[i];
+			jnum = numneigh[ii];
+			
+			printf("inum = %u\n",inum);
+			//for (int j; j<jnum; j++)
+			//printf("number of neighbors = %u",jnum);
+		
+			mu[i][3] = sqrt(mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2]);
+			printf("mu[%u] = [%f,%f,%f]\n",i,mu[i][0],mu[i][1],mu[i][2]);
+		}
 }
 
 /* ---------------------------------------------------------------------- */
