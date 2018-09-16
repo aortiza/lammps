@@ -37,9 +37,9 @@ enum{NONE,CONSTANT,EQUAL,ATOM};
 
 FixSetDipole::FixSetDipole(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg),
-  xstr(NULL), ystr(NULL), zstr(NULL)
+  xstr(NULL), ystr(NULL), zstr(NULL), list(NULL)
 {
-  if (narg < 8 ) error->all(FLERR,"Illegal fix setdipole command");
+  if (narg < 7 ) error->all(FLERR,"Illegal fix setdipole command");
   xstr = ystr = zstr = NULL;
   
   // field vector component
@@ -74,27 +74,16 @@ FixSetDipole::FixSetDipole(LAMMPS *lmp, int narg, char **arg) :
     zstyle = CONSTANT;
   }
   // End of field vector components
-  // cuttoff
+  // max_iter
   if (strstr(arg[6],"v_") == arg[6]) {
     int n = strlen(&arg[6][2]) + 1;
-    cuttoffstr = new char[n];
-    strcpy(cuttoffstr,&arg[6][2]);
-  } else if (strcmp(arg[6],"NULL") == 0) {
-    cuttoffstyle = NONE;
-  } else {
-    cuttoffvalue = force->numeric(FLERR,arg[6]);
-    cuttoffstyle = CONSTANT;
-  }
-  // max_iter
-  if (strstr(arg[7],"v_") == arg[7]) {
-    int n = strlen(&arg[7][2]) + 1;
     iterstr = new char[n];
-    strcpy(iterstr,&arg[7][2]);
-  } else if (strcmp(arg[7],"NULL") == 0) {
+    strcpy(iterstr,&arg[6][2]);
+  } else if (strcmp(arg[6],"NULL") == 0) {
     iterstyle = NONE;
   } else {
-    itervalue = force->numeric(FLERR,arg[7]);
-    itervalue = force->numeric(FLERR,arg[7]);
+    itervalue = force->numeric(FLERR,arg[6]);
+    itervalue = force->numeric(FLERR,arg[6]);
     iterstyle = CONSTANT;
   }
 
@@ -110,7 +99,6 @@ FixSetDipole::~FixSetDipole()
   delete [] xstr;
   delete [] ystr;
   delete [] zstr;
-  delete [] cuttoffstr;
   delete [] iterstr;
   memory->destroy(sforce);
 
@@ -157,16 +145,6 @@ void FixSetDipole::init()
     else error->all(FLERR,"Variable for fix setdipole is invalid style");
   }
   
-  // cuttoff
-  if (cuttoffstr) {
-    cuttoffvar = input->variable->find(cuttoffstr);
-    if (cuttoffvar < 0)
-      error->all(FLERR,"Variable name for fix setdipole does not exist");
-    if (input->variable->equalstyle(cuttoffvar)) cuttoffstyle = EQUAL;
-    else if (input->variable->atomstyle(cuttoffvar)) cuttoffstyle = ATOM;
-    else error->all(FLERR,"Variable for fix setdipole is invalid style");
-  }
-  
   // max_iter
   if (iterstr) {
     itervar = input->variable->find(iterstr);
@@ -197,10 +175,10 @@ void FixSetDipole::init()
 
   // Create neighbor request
   int irequest = neighbor->request(this,instance_me);
-/*   neighbor->requests[irequest]->pair = 0;
+  neighbor->requests[irequest]->pair = 0;
   neighbor->requests[irequest]->fix = 1;
   neighbor->requests[irequest]->half = 0;
-  neighbor->requests[irequest]->full = 1; */
+  neighbor->requests[irequest]->full = 1;
   
 }
 
@@ -210,7 +188,7 @@ void FixSetDipole::init_list(int id, NeighList *ptr)
   list = ptr;
 }
 
-/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- 
 
 void FixSetDipole::setup(int vflag)
 {
@@ -225,20 +203,32 @@ void FixSetDipole::setup(int vflag)
     }
   }
 }
+*/
+void FixSetDipole::setup(int vflag)
+{
+  if (strstr(update->integrate_style,"verlet"))
+    post_force(vflag);
+  else {
+    ((Respa *) update->integrate)->copy_flevel_f(ilevel_respa);
+    post_force_respa(vflag,ilevel_respa,0);
+    ((Respa *) update->integrate)->copy_f_flevel(ilevel_respa);
+  }
+}
 
-/* ---------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------
 
 void FixSetDipole::min_setup(int vflag)
 {
   post_force(vflag);
 }
 
-/* ---------------------------------------------------------------------- */
+---------------------------------------------------------------------- */
 
 void FixSetDipole::post_force(int vflag)
 {
-  int inum, ii, jnum;
-  int *ilist,*numneigh,**firstneigh;
+  int inum, ii, jnum, jj;
+  int *ilist,*jlist,*numneigh,**firstneigh;
+  double **x = atom->x;
   double **mu = atom->mu;
   double *xi = atom->xi;
   double *radius = atom->radius;
@@ -246,14 +236,17 @@ void FixSetDipole::post_force(int vflag)
   int nlocal = atom->nlocal;
   double volume;
   double pi43 = 4.0/3.0*3.14159265358979323846;
-  
+  double pi4_inv = 1/4.0/3.14159265358979323846;
+  double mu_next [nlocal][3];
+  double B [3];
+  double r [3];
+  double r1, r3, r5;
+	  
   // The neighbor list is built when it is instantiated
-  printf("creating lists ... ");
   inum = list->inum;
   ilist = list->ilist;
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
-  printf("lists created \n");
 
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
   
@@ -308,8 +301,7 @@ void FixSetDipole::post_force(int vflag)
 		
 	}
 	
-	printf("list");
-	for (int i=0; i<nlocal; i++)
+	for (int i=0; i<nlocal; i++) {
 		if (mask[i] & groupbit) {
 			
 			volume = pi43*radius[i]*radius[i]*radius[i];
@@ -318,18 +310,71 @@ void FixSetDipole::post_force(int vflag)
 			mu[i][1] = yvalue*volume*xi[i];
 			mu[i][2] = zvalue*volume*xi[i];
 			
-			printf("building list\n");
-			
-			ii = ilist[i];
-			jnum = numneigh[ii];
-			
-			printf("inum = %u\n",inum);
-			//for (int j; j<jnum; j++)
-			//printf("number of neighbors = %u",jnum);
-		
-			mu[i][3] = sqrt(mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2]);
-			printf("mu[%u] = [%f,%f,%f]\n",i,mu[i][0],mu[i][1],mu[i][2]);
 		}
+	}
+	for (int iter=0; iter<itervalue; iter++){
+		printf("in iteration %u\n", iter);
+		for (int i=0; i<nlocal; i++){
+			if (mask[i] & groupbit){
+				// i is the current atom.
+				// ilist is the directory of nieighbors
+	
+				ii = ilist[i];
+				jlist = firstneigh[ii];
+				jnum = numneigh[ii];
+	
+				B[0] = 0;
+				B[1] = 0;
+				B[2] = 0;
+	
+				// Calculate the field at this point from all other colloids
+				// printf("current atom is %u ",i);
+				// printf("with %u neighbors: ",jnum);
+				for (int j=0; j<jnum; j++)
+				{
+					jj = jlist[j];
+					//printf("%u:%u ,",j,jj);
+					r[0] = x[jj][0]-x[ii][0];
+					r[1] = x[jj][1]-x[ii][1];
+					r[2] = x[jj][2]-x[ii][2];
+				
+					r1 = sqrt(r[0]*r[0]+r[1]*r[1]+r[2]*r[2]);
+					r3 = r1*r1*r1;
+					r5 = r3*r1*r1;
+					
+					B[0] += pi4_inv * (3*r[0]*mu[jj][0]*r[0]/r3-mu[jj][0]/r5);
+					B[1] += pi4_inv * (3*r[1]*mu[jj][1]*r[1]/r3-mu[jj][1]/r5);
+					B[2] += pi4_inv * (3*r[2]*mu[jj][2]*r[2]/r3-mu[jj][2]/r5);
+				
+				}
+				mu_next[i][0] = mu[i][0]+B[0]*volume*xi[i];
+				mu_next[i][1] = mu[i][1]+B[1]*volume*xi[i];
+				mu_next[i][2] = mu[i][2]+B[2]*volume*xi[i];
+				
+				printf("moment went from [%f %f %f]",mu[i][0],mu[i][1],mu[i][2]);
+				printf("to [%f %f %f]\n",mu_next[i][0],mu_next[i][1],mu_next[i][2]);
+				
+			}
+		}
+		
+		for (int i=0; i<nlocal; i++){
+			if (mask[i] & groupbit){
+				mu[i][0] = mu_next[i][0];
+				mu[i][1] = mu_next[i][1];
+				mu[i][2] = mu_next[i][2];
+			}
+		}
+		
+	}
+
+
+	// set dipole magnitude
+	for (int i = 0; i<nlocal; i++) {
+		if (mask[i] & groupbit) {
+			mu[i][3] = sqrt(mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2]);
+		}
+	}
+		
 }
 
 /* ---------------------------------------------------------------------- */

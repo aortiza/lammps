@@ -70,7 +70,6 @@
 #include "fix_tmd.h"
 #include "fix_vector.h"
 #include "fix_viscous.h"
-#include "fix_wall_colloid.h"
 #include "fix_wall_harmonic.h"
 #include "fix_wall_lj1043.h"
 #include "fix_wall_lj126.h"

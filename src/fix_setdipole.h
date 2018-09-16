@@ -32,13 +32,17 @@ class FixSetDipole : public Fix {
   void init();
   void init_list(int, class NeighList *);
   void setup(int);
-  void min_setup(int);
+  //void min_setup(int);
   void post_force(int);
   void post_force_respa(int, int, int);
   void min_post_force(int);
   
+ private:
+  int ilevel_respa;
+	  
  protected:
-  double xvalue,yvalue,zvalue,cuttoffvalue,itervalue;
+  double xvalue,yvalue,zvalue;
+  int itervalue;
   int varflag;
   char *xstr,*ystr,*zstr,*cuttoffstr,*iterstr;
   int xvar,yvar,zvar,cuttoffvar,itervar,xstyle,ystyle,zstyle,cuttoffstyle,iterstyle;
