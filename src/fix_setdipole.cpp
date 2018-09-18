@@ -237,10 +237,10 @@ void FixSetDipole::post_force(int vflag)
   double volume;
   double pi43 = 4.0/3.0*3.14159265358979323846;
   double pi4_inv = 1/4.0/3.14159265358979323846;
-  double mu_next [nlocal][3];
+  double mu_correct [nlocal][3];
   double B [3];
   double r [3];
-  double r1, r3, r5;
+  double r1, r3, r5, mudotr;
 	  
   // The neighbor list is built when it is instantiated
   inum = list->inum;
@@ -310,10 +310,14 @@ void FixSetDipole::post_force(int vflag)
 			mu[i][1] = yvalue*volume*xi[i];
 			mu[i][2] = zvalue*volume*xi[i];
 			
+			mu_correct[i][0] = 0;
+			mu_correct[i][1] = 0;
+			mu_correct[i][2] = 0;
 		}
 	}
+	
+	
 	for (int iter=0; iter<itervalue; iter++){
-		printf("in iteration %u\n", iter);
 		for (int i=0; i<nlocal; i++){
 			if (mask[i] & groupbit){
 				// i is the current atom.
@@ -342,31 +346,29 @@ void FixSetDipole::post_force(int vflag)
 					r3 = r1*r1*r1;
 					r5 = r3*r1*r1;
 					
-					B[0] += pi4_inv * (3*r[0]*mu[jj][0]*r[0]/r3-mu[jj][0]/r5);
-					B[1] += pi4_inv * (3*r[1]*mu[jj][1]*r[1]/r3-mu[jj][1]/r5);
-					B[2] += pi4_inv * (3*r[2]*mu[jj][2]*r[2]/r3-mu[jj][2]/r5);
-				
+					mudotr = mu_correct[jj][0]*r[0] + mu_correct[jj][1]*r[1] + mu_correct[jj][2]*r[2];
+					
+					B[0] += pi4_inv * (3*r[0]*mudotr/r3-mu[jj][0]/r5);
+					B[1] += pi4_inv * (3*r[1]*mudotr/r3-mu[jj][1]/r5);
+					B[2] += pi4_inv * (3*r[2]*mudotr/r3-mu[jj][2]/r5);
+					
 				}
-				mu_next[i][0] = mu[i][0]+B[0]*volume*xi[i];
-				mu_next[i][1] = mu[i][1]+B[1]*volume*xi[i];
-				mu_next[i][2] = mu[i][2]+B[2]*volume*xi[i];
-				
-				printf("moment went from [%f %f %f]",mu[i][0],mu[i][1],mu[i][2]);
-				printf("to [%f %f %f]\n",mu_next[i][0],mu_next[i][1],mu_next[i][2]);
-				
-			}
-		}
-		
-		for (int i=0; i<nlocal; i++){
-			if (mask[i] & groupbit){
-				mu[i][0] = mu_next[i][0];
-				mu[i][1] = mu_next[i][1];
-				mu[i][2] = mu_next[i][2];
-			}
-		}
-		
-	}
 
+				mu_correct[i][0] = mu[i][0]+B[0]*volume*xi[i];
+				mu_correct[i][1] = mu[i][1]+B[1]*volume*xi[i];
+				mu_correct[i][2] = mu[i][2]+B[2]*volume*xi[i];
+				
+			}
+		}
+	}
+	
+	for (int i=0; i<nlocal; i++){
+		if (mask[i] & groupbit){
+			mu[i][0] = mu_correct[i][0];
+			mu[i][1] = mu_correct[i][1];
+			mu[i][2] = mu_correct[i][2];
+		}
+	}
 
 	// set dipole magnitude
 	for (int i = 0; i<nlocal; i++) {
