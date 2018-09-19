@@ -232,12 +232,12 @@ void FixSetDipole::post_force(int vflag)
   double **mu = atom->mu;
   double *xi = atom->xi;
   double *radius = atom->radius;
+  int *tag = atom->tag;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   double volume;
   double pi43 = 4.0/3.0*3.14159265358979323846;
   double pi4_inv = 1/4.0/3.14159265358979323846;
-  double mu_correct [nlocal][3];
   double B [3];
   double r [3];
   double r1, r3, r5, mudotr;
@@ -289,11 +289,7 @@ void FixSetDipole::post_force(int vflag)
 		
 		for (int i = 0; i < nlocal; i++)
 			if (mask[i] & groupbit) {
-/* 				printf("value = [%f,%f,%f]\n",xvalue,yvalue,zvalue);
-				printf("var = [%f,%f,%f]\n",xvar,xvar,xvar);
-				printf("mu = [%f,%f,%f]\n",mu[i][0],mu[i][1],mu[i][2]);
-*/				
-				//printf("sforce=%e ,zvalue = %e \n",sforce[i][2],zvalue);
+
  				if (xstyle == ATOM) xvalue = sforce[i][0];
 				if (ystyle == ATOM) yvalue = sforce[i][1];
 				if (zstyle == ATOM) zvalue = sforce[i][2];
@@ -301,7 +297,12 @@ void FixSetDipole::post_force(int vflag)
 		
 	}
 	
-	for (int i=0; i<nlocal; i++) {
+	int n_neighbors = 0;
+	
+	//printf("field is B = [%2.2g,%2.2g,%2.2g] \n",xvalue,yvalue,zvalue);
+
+	for (int i=0; i<inum; i++) {
+		
 		if (mask[i] & groupbit) {
 			
 			volume = pi43*radius[i]*radius[i]*radius[i];
@@ -310,19 +311,40 @@ void FixSetDipole::post_force(int vflag)
 			mu[i][1] = yvalue*volume*xi[i];
 			mu[i][2] = zvalue*volume*xi[i];
 			
-			mu_correct[i][0] = 0;
-			mu_correct[i][1] = 0;
-			mu_correct[i][2] = 0;
+			ii = ilist[i];
+			jlist = firstneigh[ii];
+			jnum = numneigh[ii];
+			
+			for (int j=0; j<jnum; j++)
+			{
+				jj = jlist[j];
+				if (jj>n_neighbors) {n_neighbors = jj;}
+			}
 		}
+		//if (i%12==0){
+			//printf("particle %u has initial m = [%2.2g,%2.2g,%2.2g]\n",tag[i],mu[i][0],mu[i][1],mu[i][2]);
+		//}
 	}
 	
-	
+	double mu_correct [n_neighbors][3];
+	//printf("There are %u particles: \n", n_neighbors);
+	for (int i=0; i<n_neighbors; i++){
+		mu_correct[i][0] = xvalue*volume*xi[i];
+		mu_correct[i][1] = xvalue*volume*xi[i];
+		mu_correct[i][2] = xvalue*volume*xi[i];
+		//if (i%12==0){
+			//printf("also, particle tag[%u]=%u has mc = [%2.2g,%2.2g,%2.2g] \n",i,tag[i],mu_correct[i][0],mu_correct[i][1],mu_correct[i][2]);
+		//}
+	}
+
+	//printf("iteration...");	
 	for (int iter=0; iter<itervalue; iter++){
+		//printf("%u ",iter);
 		for (int i=0; i<nlocal; i++){
 			if (mask[i] & groupbit){
 				// i is the current atom.
 				// ilist is the directory of nieighbors
-	
+				
 				ii = ilist[i];
 				jlist = firstneigh[ii];
 				jnum = numneigh[ii];
@@ -332,38 +354,53 @@ void FixSetDipole::post_force(int vflag)
 				B[2] = 0;
 	
 				// Calculate the field at this point from all other colloids
-				// printf("current atom is %u ",i);
-				// printf("with %u neighbors: ",jnum);
+				//printf("current atom is %u ",i);
+				//printf("with %u neighbors: \n",jnum);
 				for (int j=0; j<jnum; j++)
 				{
-					jj = jlist[j];
-					//printf("%u:%u ,",j,jj);
-					r[0] = x[jj][0]-x[ii][0];
-					r[1] = x[jj][1]-x[ii][1];
-					r[2] = x[jj][2]-x[ii][2];
-				
-					r1 = sqrt(r[0]*r[0]+r[1]*r[1]+r[2]*r[2]);
-					r3 = r1*r1*r1;
-					r5 = r3*r1*r1;
+					if (mask[j] & groupbit) {
+						jj = jlist[j];
+
+						jj &= NEIGHMASK;
+						//printf("%u:%u,%2.2f ",j,jj,mu_correct[jj][0]);
+						r[0] = x[jj][0]-x[ii][0];
+						r[1] = x[jj][1]-x[ii][1];
+						r[2] = x[jj][2]-x[ii][2];
 					
-					mudotr = mu_correct[jj][0]*r[0] + mu_correct[jj][1]*r[1] + mu_correct[jj][2]*r[2];
-					
-					B[0] += pi4_inv * (3*r[0]*mudotr/r3-mu[jj][0]/r5);
-					B[1] += pi4_inv * (3*r[1]*mudotr/r3-mu[jj][1]/r5);
-					B[2] += pi4_inv * (3*r[2]*mudotr/r3-mu[jj][2]/r5);
-					
+						r1 = sqrt(r[0]*r[0]+r[1]*r[1]+r[2]*r[2]);
+						//printf("d = %2.2f, ",r1);
+						r3 = r1*r1*r1;
+						r5 = r3*r1*r1;
+						
+						mudotr = mu_correct[jj][0]*r[0] + mu_correct[jj][1]*r[1] + mu_correct[jj][2]*r[2];
+						//printf("m.r = [%g,%g,%g].[%g,%g,%g]=%g \n",mu_correct[jj][0], mu_correct[jj][1], mu_correct[jj][2],r[0],r[1],r[2],mudotr);
+						//printf("m.r = %f \n",mudotr);
+						//if ((i==0||i==60) & j==(jnum-1)){
+							//printf("\n neighbor %u:%u : m.r = [%f,%f,%f]",jj,mudotr);
+							//printf("m_c = [%f,%f,%f] \n",mu_correct[i][0],mu_correct[i][1],mu_correct[i][2]);
+						//}
+						B[0] += pi4_inv * (3*r[0]*mudotr/r3-mu_correct[jj][0]/r5);
+						B[1] += pi4_inv * (3*r[1]*mudotr/r3-mu_correct[jj][1]/r5);
+						B[2] += pi4_inv * (3*r[2]*mudotr/r3-mu_correct[jj][2]/r5);
+					}
 				}
 
 				mu_correct[i][0] = mu[i][0]+B[0]*volume*xi[i];
 				mu_correct[i][1] = mu[i][1]+B[1]*volume*xi[i];
 				mu_correct[i][2] = mu[i][2]+B[2]*volume*xi[i];
 				
+				
+				//printf("B_c = [%f,%f,%f] ",B[0],B[1],B[2]);
+				//printf("m_c = [%f,%f,%f] ",mu_correct[i][0],mu_correct[i][1],mu_correct[i][2]);
+				//printf("\n");
 			}
 		}
 	}
 	
 	for (int i=0; i<nlocal; i++){
+		//printf("setting corrected m of %u",i);
 		if (mask[i] & groupbit){
+
 			mu[i][0] = mu_correct[i][0];
 			mu[i][1] = mu_correct[i][1];
 			mu[i][2] = mu_correct[i][2];
@@ -376,6 +413,7 @@ void FixSetDipole::post_force(int vflag)
 			mu[i][3] = sqrt(mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2]);
 		}
 	}
+	//printf("\n ----- end timestep ------ \n ");
 		
 }
 
