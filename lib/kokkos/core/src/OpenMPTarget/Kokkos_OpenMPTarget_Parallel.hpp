@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 // 
 // ************************************************************************
 //@HEADER
@@ -351,7 +351,7 @@ private:
             , reference_type update , const bool final )
     {
       #ifdef KOKKOS_OPT_RANGE_AGGRESSIVE_VECTORIZATION
-      #ifdef KOKKOS_HAVE_PRAGMA_IVDEP
+      #ifdef KOKKOS_ENABLE_PRAGMA_IVDEP
       #pragma ivdep
       #endif
       #endif
@@ -369,7 +369,7 @@ private:
     {
       const TagType t{} ;
       #ifdef KOKKOS_OPT_RANGE_AGGRESSIVE_VECTORIZATION
-      #ifdef KOKKOS_HAVE_PRAGMA_IVDEP
+      #ifdef KOKKOS_ENABLE_PRAGMA_IVDEP
       #pragma ivdep
       #endif
       #endif
@@ -697,13 +697,13 @@ namespace Impl {
     const iType increment;
 
     inline
-    TeamThreadRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, const iType& count):
+    TeamThreadRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, iType count):
       start( thread_.team_rank() ),
       end( count ),
       increment( thread_.team_size() )
     {}
     inline
-    TeamThreadRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, const iType& begin_, const iType& end_):
+    TeamThreadRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, iType begin_, iType end_):
       start( begin_+thread_.team_rank() ),
       end( end_ ),
       increment( thread_.team_size() )
@@ -713,18 +713,18 @@ namespace Impl {
   template<typename iType>
   struct ThreadVectorRangeBoundariesStruct<iType,OpenMPTargetExecTeamMember> {
     typedef iType index_type;
-    const iType start;
-    const iType end;
-    const iType increment;
+    const index_type start;
+    const index_type end;
+    const index_type increment;
 
     inline
-    ThreadVectorRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, const iType& count):
+    ThreadVectorRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, index_type count):
       start( thread_.m_vector_lane ),
       end( count ),
       increment( thread_.m_vector_length )
     {}
     inline
-    ThreadVectorRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, const iType& begin_, const iType& end_):
+    ThreadVectorRangeBoundariesStruct (const OpenMPTargetExecTeamMember& thread_, index_type begin_, index_type end_):
       start( begin_+thread_.m_vector_lane ),
       end( end_ ),
       increment( thread_.m_vector_length )
@@ -734,28 +734,28 @@ namespace Impl {
   template<typename iType>
   KOKKOS_INLINE_FUNCTION
   Impl::TeamThreadRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember>
-    TeamThreadRange(const Impl::OpenMPTargetExecTeamMember& thread, const iType& count) {
+    TeamThreadRange(const Impl::OpenMPTargetExecTeamMember& thread, iType count) {
     return Impl::TeamThreadRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember>(thread,count);
   }
   
   template<typename iType>
   KOKKOS_INLINE_FUNCTION
   Impl::TeamThreadRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember>
-    TeamThreadRange(const Impl::OpenMPTargetExecTeamMember& thread, const iType& begin, const iType& end) {
+    TeamThreadRange(const Impl::OpenMPTargetExecTeamMember& thread, iType begin, iType end) {
     return Impl::TeamThreadRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember>(thread,begin,end);
   }
 
   template<typename iType>
   KOKKOS_INLINE_FUNCTION
   Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember >
-    ThreadVectorRange(const Impl::OpenMPTargetExecTeamMember& thread, const iType& count) {
+    ThreadVectorRange(const Impl::OpenMPTargetExecTeamMember& thread, iType count) {
     return Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember >(thread,count);
   }
 
   template<typename iType>
   KOKKOS_INLINE_FUNCTION
   Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember>
-    ThreadVectorRange(const Impl::OpenMPTargetExecTeamMember& thread, const iType& begin, const iType& end) {
+    ThreadVectorRange(const Impl::OpenMPTargetExecTeamMember& thread, iType begin, iType end) {
     return Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::OpenMPTargetExecTeamMember>(thread,begin,end);
   }
 

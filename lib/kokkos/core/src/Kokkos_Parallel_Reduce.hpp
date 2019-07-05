@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -62,9 +62,6 @@ struct is_reducer_type<T,typename std::enable_if<
   enum { value = 1 };
 };
 
-namespace Experimental {
-
-
 template<class Scalar, class Space>
 struct Sum {
 public:
@@ -72,18 +69,19 @@ public:
   typedef Sum reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  Sum(value_type& value_): value(&value_) {}
+  Sum(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  Sum(const result_view_type& value_): value(value_.data()) {}
+  Sum(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -103,12 +101,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -119,18 +122,19 @@ public:
   typedef Prod reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  Prod(value_type& value_): value(&value_) {}
+  Prod(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  Prod(const result_view_type& value_): value(value_.data()) {}
+  Prod(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -150,12 +154,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -166,18 +175,19 @@ public:
   typedef Min reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  Min(value_type& value_): value(&value_) {}
+  Min(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  Min(const result_view_type& value_): value(value_.data()) {}
+  Min(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -199,12 +209,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -215,18 +230,19 @@ public:
   typedef Max reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  Max(value_type& value_): value(&value_) {}
+  Max(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  Max(const result_view_type& value_): value(value_.data()) {}
+  Max(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -249,12 +265,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -265,18 +286,19 @@ public:
   typedef LAnd reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  LAnd(value_type& value_): value(&value_) {}
+  LAnd(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  LAnd(const result_view_type& value_): value(value_.data()) {}
+  LAnd(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   KOKKOS_INLINE_FUNCTION
   void join(value_type& dest, const value_type& src)  const {
@@ -295,12 +317,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -311,18 +338,19 @@ public:
   typedef LOr reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  LOr(value_type& value_): value(&value_) {}
+  LOr(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  LOr(const result_view_type& value_): value(value_.data()) {}
+  LOr(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -342,12 +370,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -358,18 +391,19 @@ public:
   typedef BAnd reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  BAnd(value_type& value_): value(&value_) {}
+  BAnd(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  BAnd(const result_view_type& value_): value(value_.data()) {}
+  BAnd(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -389,12 +423,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -405,18 +444,19 @@ public:
   typedef BOr reducer;
   typedef typename std::remove_cv<Scalar>::type value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  BOr(value_type& value_): value(&value_) {}
+  BOr(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  BOr(const result_view_type& value_): value(value_.data()) {}
+  BOr(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -436,12 +476,17 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   value_type& reference() const {
-    return *value;
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -474,18 +519,19 @@ public:
   typedef MinLoc reducer;
   typedef ValLocScalar<scalar_type,index_type> value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  MinLoc(value_type& value_): value(&value_) {}
+  MinLoc(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  MinLoc(const result_view_type& value_): value(value_.data()) {}
+  MinLoc(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
 
   //Required
@@ -508,13 +554,18 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  value_type& reference() {
-    return *value;
+  value_type& reference() const {
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -529,18 +580,19 @@ public:
   typedef MaxLoc reducer;
   typedef ValLocScalar<scalar_type,index_type> value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  MaxLoc(value_type& value_): value(&value_) {}
+  MaxLoc(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  MaxLoc(const result_view_type& value_): value(value_.data()) {}
+  MaxLoc(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -562,13 +614,18 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  value_type& reference() {
-    return *value;
+  value_type& reference() const {
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -599,18 +656,19 @@ public:
   typedef MinMax reducer;
   typedef MinMaxScalar<scalar_type> value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  MinMax(value_type& value_): value(&value_) {}
+  MinMax(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  MinMax(const result_view_type& value_): value(value_.data()) {}
+  MinMax(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -640,13 +698,18 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  value_type& reference() {
-    return *value;
+  value_type& reference() const {
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 
@@ -683,18 +746,19 @@ public:
   typedef MinMaxLoc reducer;
   typedef MinMaxLocScalar<scalar_type,index_type> value_type;
 
-  typedef Kokkos::View<value_type, Space, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_type;
+  typedef Kokkos::View<value_type, Space> result_view_type;
 
 private:
-  value_type* value;
+  result_view_type value;
+  bool references_scalar_v;
 
 public:
 
   KOKKOS_INLINE_FUNCTION
-  MinMaxLoc(value_type& value_): value(&value_) {}
+  MinMaxLoc(value_type& value_): value(&value_),references_scalar_v(true) {}
 
   KOKKOS_INLINE_FUNCTION
-  MinMaxLoc(const result_view_type& value_): value(value_.data()) {}
+  MinMaxLoc(const result_view_type& value_): value(value_),references_scalar_v(false) {}
 
   //Required
   KOKKOS_INLINE_FUNCTION
@@ -730,20 +794,22 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  value_type& reference() {
-    return *value;
+  value_type& reference() const {
+    return *value.data();
   }
 
   KOKKOS_INLINE_FUNCTION
   result_view_type view() const {
-    return result_view_type(value);
+    return value;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  bool references_scalar() const {
+    return references_scalar_v;
   }
 };
 }
-}
-
-
-namespace Kokkos {
+namespace Kokkos{
 namespace Impl {
 
 template< class T, class ReturnType , class ValueTraits>
@@ -799,7 +865,14 @@ struct ParallelReduceReturnValue<typename std::enable_if<
 
   static return_type return_value(ReturnType& return_val,
                                   const FunctorType& functor) {
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
     return return_type(return_val,functor.value_count);
+#else
+    if ( is_array<ReturnType>::value )
+      return return_type(return_val);
+    else
+      return return_type(return_val,functor.value_count);
+#endif
   }
 };
 
@@ -812,13 +885,11 @@ struct ParallelReduceReturnValue<typename std::enable_if<
   typedef typename return_type::value_type value_type;
 
   static return_type return_value(ReturnType& return_val,
-                                  const FunctorType& functor) {
+                                  const FunctorType&) {
     return return_val;
   }
 };
-}
 
-namespace Impl {
 template< class T, class ReturnType , class FunctorType>
 struct ParallelReducePolicyType;
 
@@ -844,9 +915,7 @@ struct ParallelReducePolicyType<typename std::enable_if<std::is_integral<PolicyT
   }
 };
 
-}
 
-namespace Impl {
   template< class FunctorType, class ExecPolicy, class ValueType, class ExecutionSpace>
   struct ParallelReduceFunctorType {
     typedef FunctorType functor_type;
@@ -854,9 +923,6 @@ namespace Impl {
       return functor;
     }
   };
-}
-
-namespace Impl {
 
   template< class PolicyType, class FunctorType, class ReturnType >
   struct ParallelReduceAdaptor {
@@ -906,241 +972,6 @@ namespace Impl {
 
 //----------------------------------------------------------------------------
 
-#if 0
-
-//----------------------------------------------------------------------------
-
-namespace Impl {
-
-template< class OutType , class InType >
-inline
-typename std::enable_if
-  < std::is_same< OutType , InType >::value , InType const & >::type
-forward_execution_policy( InType const & p ) { return p ; }
-
-template< class OutType , class InType >
-inline
-typename std::enable_if
-  < ! std::is_same< OutType , InType >::value , OutType >::type
-forward_execution_policy( InType const & p ) { return OutType(p); }
-
-
-template< class OutType , class InType >
-inline
-typename std::enable_if
-  < std::is_same< OutType , InType >::value , InType const & >::type
-forward_reducer( InType const & r ) { return r ; }
-
-template< class OutType , class InType >
-inline
-typename std::enable_if< Kokkos::is_view< InType >::value , OutType >::type
-forward_reducer( InType const & v )
-{ return OutType( v.data() ); }
-
-template< class OutType >
-inline
-OutType
-forward_reducer( typename OutType::reference ref )
-{ return OutType( ref ); }
-
-} /* namespace Impl */
-
-//----------------------------------------------------------------------------
-// parallel_reduce with 4 args: label, policy, closure, and reducer
-
-/**\brief  Parallel reduce with an explicit Reducer */
-template< class PolicyType , class ClosureType , class ReduceType >
-inline
-typename std::enable_if< Kokkos::is_reducer< ReduceType >::value >::type
-parallel_reduce( std::string const  & arg_label
-               , PolicyType        && arg_policy
-               , ClosureType       && arg_closure
-               , ReduceType        && arg_reduce
-               )
-{
-  //------------------------------
-
-  using input_policy_type =
-    typename std::remove_const<
-      typename std::remove_reference< PolicyType >::type >::type ;
-
-  using input_reduce_type =
-    typename std::remove_const<
-      typename std::remove_reference< ReduceType >::type >::type ;
-
-  using Analysis = Kokkos::Impl::FunctorAnalysis
-    < Kokkos::Impl::FunctorPatternInterface::REDUCE
-    , input_policy_type
-    , ClosureType
-    > ;
-
-  //------------------------------
-  // Policy is either given or an integer value
-  // If an integer value then is a RangePolicy with queried execution space
-
-  enum { is_policy = Kokkos::is_execution_policy< input_policy_type >::value };
-  enum { is_intval = std::is_integral< input_policy_type >::value };
-
-  static_assert( is_policy || is_intval ,
-    "Kokkos::parallel_reduce 2nd argument must be execution policy or integral value" );
-
-  using policy_type = typename std::conditional
-    < is_policy , input_policy_type
-    , Kokkos::RangePolicy< typename Analysis::execution_space >
-    >::type ;
-
-  //------------------------------
-  // ReduceType is either a reducer, view, or value reference
-
-  enum { is_reducer = Kokkos::is_reducer< input_reduce_type >::value };
-  enum { is_view    = Kokkos::is_view< input_reduce_type >::value };
-  enum { is_ref     = std::is_same< ReduceType
-                                  , typename Analysis::reference_type
-                                  >::value };
-
-  static_assert( is_reducer || is_view || is_ref ,
-    "Kokkos::parallel_reduce 4th argument must be reducer, output View, or output variable" );
-
-  // If input_reducer_type is_view or is_ref then need its memory_space.
-  // A View has a memory_space, a reference is in the HostSpace.
-
-  using has_space = typename std::conditional
-    < is_view , input_reduce_type , Kokkos::HostSpace >::type ;
-
-  using memory_space = typename has_space::memory_space ;
-
-  using reduce_type = typename std::conditional
-    < is_reducer , input_reduce_type
-    , typename Analysis::Reducer< memory_space >
-    >::type ;
-
-  //------------------------------
-
-  #if defined(KOKKOS_ENABLE_PROFILING)
-  uint64_t kpID = 0;
-  if(Kokkos::Profiling::profileLibraryLoaded()) {
-    Kokkos::Profiling::beginParallelReduce(arg_label, 0, &kpID);
-  }
-  #endif
-
-  //------------------------------
-  // Disable tracking while creating the closure:
-
-  Kokkos::Impl::shared_allocation_tracking_claim_and_disable();
-
-  Kokkos::Impl::ParallelReduce< ClosureType , policy_type, reduce_type
-                              , typename Analysis::execution_space >
-    closure( arg_closure
-           , forward_execution_policy< policy_type >( arg_policy )
-           , forward_reducer< reduce_type >( arg_reduce ) );
-
-  Kokkos::Impl::shared_allocation_tracking_release_and_enable();
-
-  // Enable tracking after creating the closure
-
-  closure.execute();
-
-  //------------------------------
-
-  #if defined(KOKKOS_ENABLE_PROFILING)
-  if(Kokkos::Profiling::profileLibraryLoaded()) {
-    Kokkos::Profiling::endParallelReduce(kpID);
-  }
-  #endif
-}
-
-//----------------------------------------------------------------------------
-// parallel_reduce with 3 args: policy, closure, and reducer
-
-template< class PolicyType , class ClosureType , class ReduceType >
-inline
-typename std::enable_if
-  < Kokkos::is_execution_policy<
-      typename std::remove_const<
-      typename std::remove_reference< PolicyType >::type >::type
-    >::value
-    ||
-    std::is_integral<
-      typename std::remove_const<
-      typename std::remove_reference< PolicyType >::type >::type
-    >::value
-  >::type ;
-parallel_reduce( PolicyType   && arg_policy
-               , ClosureType  && arg_closure
-               , ReduceType   && arg_reduce
-               )
-{
-  parallel_reduce( typeid(ClosureType).name()
-                 , std::forward< PolicyType  >( arg_policy )
-                 , std::forward< ClosureType >( arg_closure )
-                 , std::forward< ReduceType  >( arg_reduce ) );
-}
-
-// parallel_reduce with 3 args: label, policy, and closure
-
-template< class PolicyType , class ClosureType >
-inline
-void
-parallel_reduce( std::string const & arg_label
-               , PolicyType   && arg_policy
-               , ClosureType  && arg_closure
-               )
-{
-  // Deduce a Reducer from the Closure
-
-  using input_policy_type =
-    typename std::remove_const<
-      typename std::remove_reference< PolicyType >::type >::type ;
-
-  using Analysis = Kokkos::Impl::FunctorAnalysis
-    < Kokkos::Impl::FunctorPatternInterface::REDUCE
-    , input_policy_type
-    , ClosureType
-    > ;
-
-  static_assert( Analysis::has_final_member_function ,
-    "Kokkos::parallel_reduce functor does not have a final member function" );
-
-  parallel_reduce( arg_label
-                 , std::forward< PolicyType  >( arg_policy )
-                 , std::forward< ClosureType >( arg_closure )
-                 , typename Analysis::Reducer<>() );
-}
-
-//----------------------------------------------------------------------------
-// parallel_reduce with 2 arguments: policy and closure:
-
-/**\brief  Parallel reduce processed by ClosureType::final */
-template< class PolicyType , class ClosureType >
-inline
-parallel_reduce( PolicyType  && arg_policy
-               , ClosureType && arg_closure )
-{
-  // Deduce a Reducer from the Closure
-
-  using input_policy_type =
-    typename std::remove_const<
-      typename std::remove_reference< PolicyType >::type >::type ;
-
-  using Analysis = Kokkos::Impl::FunctorAnalysis
-    < Kokkos::Impl::FunctorPatternInterface::REDUCE
-    , input_policy_type
-    , ClosureType
-    > ;
-
-  static_assert( Analysis::has_final_member_function ,
-    "Kokkos::parallel_reduce functor does not have a final member function" );
-
-  parallel_reduce( typeid(ClosureType).name()
-                 , std::forward< PolicyType  >( arg_policy )
-                 , std::forward< ClosureType >( arg_closure )
-                 , typename Analysis::Reducer<>() );
-}
-
-#endif
-
-//----------------------------------------------------------------------------
-
 /*! \fn void parallel_reduce(label,policy,functor,return_argument)
     \brief Perform a parallel reduction.
     \param label An optional Label giving the call name. Must be able to construct a std::string from the argument.
@@ -1148,6 +979,37 @@ parallel_reduce( PolicyType  && arg_policy
     \param functor A functor with a reduction operator, and optional init, join and final functions.
     \param return_argument A return argument which can be a scalar, a View, or a ReducerStruct. This argument can be left out if the functor has a final function.
 */
+
+// Parallel Reduce Blocking behavior
+
+namespace Impl {
+template <typename T>
+  struct ReducerHasTestReferenceFunction
+  {
+    template <typename E> static std::true_type test_func( decltype(&E::references_scalar) ) ;
+    template <typename E> static std::false_type test_func(...);
+
+    enum { value = std::is_same<std::true_type,decltype(test_func<T>(0))>::value };
+  };
+
+  template<class T, bool is_reducer =  ReducerHasTestReferenceFunction<T>::value>
+  struct ParallelReduceFence {
+    static void fence(const T&) {
+      Kokkos::fence();
+    }
+  };
+  template<class ... Args>
+  struct ParallelReduceFence<View<Args...>, false> {
+    static void fence(const View<Args...>) {};
+  };
+  template<class T>
+  struct ParallelReduceFence<T,true> {
+    static void fence(const T& reducer) {
+      if(reducer.references_scalar())
+        Kokkos::fence();
+    }
+  };
+}
 
 /** \brief  Parallel reduction
  *
@@ -1200,6 +1062,7 @@ void parallel_reduce(const std::string& label,
                        Kokkos::Impl::is_execution_policy<PolicyType>::value
                      >::type * = 0) {
   Impl::ParallelReduceAdaptor<PolicyType,FunctorType,ReturnType>::execute(label,policy,functor,return_value);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 template< class PolicyType, class FunctorType, class ReturnType >
@@ -1211,6 +1074,7 @@ void parallel_reduce(const PolicyType& policy,
                        Kokkos::Impl::is_execution_policy<PolicyType>::value
                      >::type * = 0) {
   Impl::ParallelReduceAdaptor<PolicyType,FunctorType,ReturnType>::execute("",policy,functor,return_value);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 template< class FunctorType, class ReturnType >
@@ -1220,6 +1084,7 @@ void parallel_reduce(const size_t& policy,
                      ReturnType& return_value) {
   typedef typename Impl::ParallelReducePolicyType<void,size_t,FunctorType>::policy_type policy_type;
   Impl::ParallelReduceAdaptor<policy_type,FunctorType,ReturnType>::execute("",policy_type(0,policy),functor,return_value);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 template< class FunctorType, class ReturnType >
@@ -1230,6 +1095,7 @@ void parallel_reduce(const std::string& label,
                      ReturnType& return_value) {
   typedef typename Impl::ParallelReducePolicyType<void,size_t,FunctorType>::policy_type policy_type;
   Impl::ParallelReduceAdaptor<policy_type,FunctorType,ReturnType>::execute(label,policy_type(0,policy),functor,return_value);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 // ReturnValue as View or Reducer: take by copy to allow for inline construction
@@ -1243,7 +1109,9 @@ void parallel_reduce(const std::string& label,
                      typename Impl::enable_if<
                        Kokkos::Impl::is_execution_policy<PolicyType>::value
                      >::type * = 0) {
-  Impl::ParallelReduceAdaptor<PolicyType,FunctorType,const ReturnType>::execute(label,policy,functor,return_value);
+  ReturnType return_value_impl = return_value;
+  Impl::ParallelReduceAdaptor<PolicyType,FunctorType,ReturnType>::execute(label,policy,functor,return_value_impl);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 template< class PolicyType, class FunctorType, class ReturnType >
@@ -1256,6 +1124,7 @@ void parallel_reduce(const PolicyType& policy,
                      >::type * = 0) {
   ReturnType return_value_impl = return_value;
   Impl::ParallelReduceAdaptor<PolicyType,FunctorType,ReturnType>::execute("",policy,functor,return_value_impl);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 template< class FunctorType, class ReturnType >
@@ -1266,6 +1135,7 @@ void parallel_reduce(const size_t& policy,
   typedef typename Impl::ParallelReducePolicyType<void,size_t,FunctorType>::policy_type policy_type;
   ReturnType return_value_impl = return_value;
   Impl::ParallelReduceAdaptor<policy_type,FunctorType,ReturnType>::execute("",policy_type(0,policy),functor,return_value_impl);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 template< class FunctorType, class ReturnType >
@@ -1277,6 +1147,7 @@ void parallel_reduce(const std::string& label,
   typedef typename Impl::ParallelReducePolicyType<void,size_t,FunctorType>::policy_type policy_type;
   ReturnType return_value_impl = return_value;
   Impl::ParallelReduceAdaptor<policy_type,FunctorType,ReturnType>::execute(label,policy_type(0,policy),functor,return_value_impl);
+  Impl::ParallelReduceFence<ReturnType>::fence(return_value);
 }
 
 // No Return Argument
@@ -1294,6 +1165,9 @@ void parallel_reduce(const std::string& label,
                                      , typename ValueTraits::value_type
                                      , typename ValueTraits::pointer_type
                                      >::type value_type ;
+
+  static_assert(Impl::FunctorAnalysis<Impl::FunctorPatternInterface::REDUCE,PolicyType,FunctorType>::
+                 has_final_member_function,"Calling parallel_reduce without either return value or final function.");
 
   typedef Kokkos::View< value_type
               , Kokkos::HostSpace
@@ -1317,6 +1191,9 @@ void parallel_reduce(const PolicyType& policy,
                                      , typename ValueTraits::pointer_type
                                      >::type value_type ;
 
+  static_assert(Impl::FunctorAnalysis<Impl::FunctorPatternInterface::REDUCE,PolicyType,FunctorType>::
+                 has_final_member_function,"Calling parallel_reduce without either return value or final function.");
+
   typedef Kokkos::View< value_type
               , Kokkos::HostSpace
               , Kokkos::MemoryUnmanaged
@@ -1336,6 +1213,9 @@ void parallel_reduce(const size_t& policy,
                                      , typename ValueTraits::value_type
                                      , typename ValueTraits::pointer_type
                                      >::type value_type ;
+
+  static_assert(Impl::FunctorAnalysis<Impl::FunctorPatternInterface::REDUCE,RangePolicy<>,FunctorType>::
+                 has_final_member_function,"Calling parallel_reduce without either return value or final function.");
 
   typedef Kokkos::View< value_type
               , Kokkos::HostSpace
@@ -1358,6 +1238,9 @@ void parallel_reduce(const std::string& label,
                                      , typename ValueTraits::pointer_type
                                      >::type value_type ;
 
+  static_assert(Impl::FunctorAnalysis<Impl::FunctorPatternInterface::REDUCE,RangePolicy<>,FunctorType>::
+                 has_final_member_function,"Calling parallel_reduce without either return value or final function.");
+
   typedef Kokkos::View< value_type
               , Kokkos::HostSpace
               , Kokkos::MemoryUnmanaged
@@ -1368,6 +1251,27 @@ void parallel_reduce(const std::string& label,
 }
 
 } //namespace Kokkos
+
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+//backwards compatiblity for Kokkos::Experimental reducers
+namespace Kokkos { namespace Experimental {
+using Kokkos::Sum;
+using Kokkos::Prod;
+using Kokkos::Min;
+using Kokkos::Max;
+using Kokkos::LAnd;
+using Kokkos::LOr;
+using Kokkos::BAnd;
+using Kokkos::BOr;
+using Kokkos::ValLocScalar;
+using Kokkos::MinLoc;
+using Kokkos::MaxLoc;
+using Kokkos::MinMaxScalar;
+using Kokkos::MinMax;
+using Kokkos::MinMaxLocScalar;
+using Kokkos::MinMaxLoc;
+}} //namespace Kokkos::Experimental
+#endif
 
 #endif // KOKKOS_PARALLEL_REDUCE_HPP
 

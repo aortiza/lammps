@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 // 
 // ************************************************************************
 //@HEADER
@@ -50,6 +50,10 @@
 #ifdef KOKKOS_ENABLE_CUDA
 #include <Cuda/Kokkos_Cuda_abort.hpp>
 #endif
+
+#ifndef KOKKOS_ABORT_MESSAGE_BUFFER_SIZE
+#  define KOKKOS_ABORT_MESSAGE_BUFFER_SIZE 2048
+#endif // ifndef KOKKOS_ABORT_MESSAGE_BUFFER_SIZE
 
 namespace Kokkos {
 namespace Impl {
@@ -72,7 +76,7 @@ std::string human_memory_size(size_t arg_bytes);
 namespace Kokkos {
 KOKKOS_INLINE_FUNCTION
 void abort( const char * const message ) {
-#ifdef __CUDA_ARCH__
+#if defined(KOKKOS_ENABLE_CUDA) && defined(__CUDA_ARCH__)
   Kokkos::Impl::cuda_abort(message);
 #else
   #if !defined(KOKKOS_ENABLE_OPENMPTARGET) && !defined(__HCC_ACCELERATOR__)
@@ -82,6 +86,50 @@ void abort( const char * const message ) {
 }
 
 }
+
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+
+
+#if !defined(NDEBUG) || defined(KOKKOS_ENFORCE_CONTRACTS) || defined(KOKKOS_DEBUG)
+#  define KOKKOS_EXPECTS(...) \
+  { \
+    if(!bool(__VA_ARGS__)) { \
+      ::Kokkos::abort( \
+        "Kokkos contract violation:\n  " \
+        "  Expected precondition `" #__VA_ARGS__ "` evaluated false." \
+      ); \
+    } \
+  }
+#  define KOKKOS_ENSURES(...) \
+  { \
+    if(!bool(__VA_ARGS__)) { \
+      ::Kokkos::abort( \
+        "Kokkos contract violation:\n  " \
+        "  Ensured postcondition `" #__VA_ARGS__ "` evaluated false." \
+      ); \
+    } \
+  }
+// some projects already define this for themselves, so don't mess them up
+#  ifndef KOKKOS_ASSERT
+#    define KOKKOS_ASSERT(...) \
+  { \
+    if(!bool(__VA_ARGS__)) { \
+      ::Kokkos::abort( \
+        "Kokkos contract violation:\n  " \
+        "  Asserted condition `" #__VA_ARGS__ "` evaluated false." \
+      ); \
+    } \
+  }
+#  endif // ifndef KOKKOS_ASSERT
+#else // not debug mode
+#  define KOKKOS_EXPECTS(...)
+#  define KOKKOS_ENSURES(...)
+#  ifndef KOKKOS_ASSERT
+#    define KOKKOS_ASSERT(...)
+#  endif // ifndef KOKKOS_ASSERT
+#endif // end debug mode ifdefs
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------

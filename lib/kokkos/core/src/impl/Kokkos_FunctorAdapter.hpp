@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 // 
 // ************************************************************************
 //@HEADER
@@ -226,7 +226,65 @@ private:
 
   template< class ArgMember >
   KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
   static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
 
   template< class TagType , class ArgMember >
   KOKKOS_INLINE_FUNCTION
@@ -234,7 +292,66 @@ private:
 
   template< class TagType , class ArgMember >
   KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
   static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+
 
   template< class TagType , class ArgMember >
   KOKKOS_INLINE_FUNCTION
@@ -242,7 +359,65 @@ private:
 
   template< class TagType , class ArgMember >
   KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
   static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class TagType , class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
 
   //----------------------------------------
   // parallel_for operator with a tag:
@@ -253,7 +428,65 @@ private:
 
   template< class ArgMember >
   KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
   static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember ) const ) {}
+
 
   template< class ArgMember >
   KOKKOS_INLINE_FUNCTION
@@ -261,18 +494,133 @@ private:
 
   template< class ArgMember >
   KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
   static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
+  template< class ArgMember >
+  KOKKOS_INLINE_FUNCTION
+  static VOIDTAG deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & ) const ) {}
+
 
   //----------------------------------------
   // parallel_reduce operator without a tag:
-
   template< class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
   static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , T & ) const ) {}
 
   template< class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
   static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
 
   template< class TagType , class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
@@ -280,7 +628,65 @@ private:
 
   template< class TagType , class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
   static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( TagType , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
 
   template< class TagType , class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
@@ -288,7 +694,64 @@ private:
 
   template< class TagType , class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
   static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class TagType , class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static REJECTTAG deduce_reduce_type( VOIDTAG , void (FunctorType::*)( const TagType & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
 
   //----------------------------------------
   // parallel_reduce operator with a tag:
@@ -299,7 +762,65 @@ private:
 
   template< class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
   static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , ArgMember , T & ) const ) {}
+
 
   template< class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
@@ -307,7 +828,64 @@ private:
 
   template< class ArgMember , class T >
   KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( tag_type , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
   static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
+
+  template< class ArgMember , class T >
+  KOKKOS_INLINE_FUNCTION
+  static T deduce_reduce_type( tag_type , void (FunctorType::*)( const tag_type & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , const ArgMember & , T & ) const ) {}
 
   //----------------------------------------
   // parallel_scan operator without a tag:
@@ -467,7 +1045,7 @@ struct FunctorValueInitFunction< FunctorType , void > {
 // If a proper FunctorType::init is declared then use it,
 // otherwise use default constructor.
 template< class FunctorType , class ArgTag
-        , class T = typename FunctorValueTraits<FunctorType,ArgTag>::reference_type
+        , class T = typename FunctorValueTraits<FunctorType,ArgTag>::reference_type // FIXME Fix FunctorValueTraits for multi-dim operator
         , class Enable = void >
 struct FunctorValueInit ;
 
@@ -854,7 +1432,10 @@ namespace Impl {
   template<typename ValueType, class JoinOp>
   struct JoinLambdaAdapter<ValueType, JoinOp, decltype( FunctorValueJoinFunction< JoinOp , void >::enable_if( & JoinOp::join ) )> {
     typedef ValueType value_type;
-    typedef StaticAssertSame<ValueType,typename JoinOp::value_type> assert_value_types_match;
+    static_assert(
+        std::is_same<ValueType,typename JoinOp::value_type>::value,
+        "JoinLambdaAdapter static_assert Fail: ValueType != JoinOp::value_type");
+
     const JoinOp& lambda;
     KOKKOS_INLINE_FUNCTION
     JoinLambdaAdapter(const JoinOp& lambda_):lambda(lambda_) {}

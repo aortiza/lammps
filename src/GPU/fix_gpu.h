@@ -50,11 +50,6 @@ class FixGPU : public Fix {
 
 /* ERROR/WARNING messages:
 
-E: Cannot use GPU package with USER-CUDA package enabled
-
-You cannot use both the GPU and USER-CUDA packages
-together.  Use one or the other.
-
 E: Illegal ... command
 
 Self-explanatory.  Check the input script syntax and compare to the
@@ -69,14 +64,6 @@ OpenMP support.
 E: GPU package does not (yet) work with atom_style template
 
 Self-explanatory.
-
-E: Cannot use pair hybrid with GPU neighbor list builds
-
-Neighbor list builds must be done on the CPU for this pair style.
-
-E: GPU split param must be positive for hybrid pair styles
-
-See the package gpu command.
 
 E: Cannot use package gpu neigh yes with triclinic box
 

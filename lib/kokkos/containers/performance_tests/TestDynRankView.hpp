@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -64,8 +64,8 @@ struct InitViewFunctor {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const int i) const {
-    for (unsigned j = 0; j < _inview.dimension(1); ++j) {
-      for (unsigned k = 0; k < _inview.dimension(2); ++k) {
+    for (unsigned j = 0; j < _inview.extent(1); ++j) {
+      for (unsigned k = 0; k < _inview.extent(2); ++k) {
         _inview(i,j,k) = i/2 -j*j + k/3;
       }
     }
@@ -84,8 +84,8 @@ struct InitViewFunctor {
 
     KOKKOS_INLINE_FUNCTION
     void operator()(const int i) const {
-      for (unsigned j = 0; j < _inview.dimension(1); ++j) {
-        for (unsigned k = 0; k < _inview.dimension(2); ++k) {
+      for (unsigned j = 0; j < _inview.extent(1); ++j) {
+        for (unsigned k = 0; k < _inview.extent(2); ++k) {
           _outview(i) += _inview(i,j,k) ;
         }
       }
@@ -104,8 +104,8 @@ struct InitStrideViewFunctor {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const int i) const {
-    for (unsigned j = 0; j < _inview.dimension(1); ++j) {
-      for (unsigned k = 0; k < _inview.dimension(2); ++k) {
+    for (unsigned j = 0; j < _inview.extent(1); ++j) {
+      for (unsigned k = 0; k < _inview.extent(2); ++k) {
         _inview(i,j,k) = i/2 -j*j + k/3;
       }
     }
@@ -123,8 +123,8 @@ struct InitViewRank7Functor {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const int i) const {
-    for (unsigned j = 0; j < _inview.dimension(1); ++j) {
-      for (unsigned k = 0; k < _inview.dimension(2); ++k) {
+    for (unsigned j = 0; j < _inview.extent(1); ++j) {
+      for (unsigned k = 0; k < _inview.extent(2); ++k) {
         _inview(i,j,k,0,0,0,0) = i/2 -j*j + k/3;
       }
     }
@@ -143,8 +143,8 @@ struct InitDynRankViewFunctor {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const int i) const {
-    for (unsigned j = 0; j < _inview.dimension(1); ++j) {
-      for (unsigned k = 0; k < _inview.dimension(2); ++k) {
+    for (unsigned j = 0; j < _inview.extent(1); ++j) {
+      for (unsigned k = 0; k < _inview.extent(2); ++k) {
         _inview(i,j,k) = i/2 -j*j + k/3;
       }
     }
@@ -163,8 +163,8 @@ struct InitDynRankViewFunctor {
 
     KOKKOS_INLINE_FUNCTION
     void operator()(const int i) const {
-      for (unsigned j = 0; j < _inview.dimension(1); ++j) {
-        for (unsigned k = 0; k < _inview.dimension(2); ++k) {
+      for (unsigned j = 0; j < _inview.extent(1); ++j) {
+        for (unsigned k = 0; k < _inview.extent(2); ++k) {
           _outview(i) += _inview(i,j,k) ;
         }
       }
@@ -197,7 +197,7 @@ void test_dynrankview_op_perf( const int par_size )
     timer.reset();
     Kokkos::RangePolicy<DeviceType> policy(0,par_size);
     Kokkos::parallel_for( policy , FunctorType(testview) );
-    DeviceType::fence();
+    DeviceType().fence();
     elapsed_time_view = timer.seconds();
     std::cout << " View time (init only): " << elapsed_time_view << std::endl;
 
@@ -205,7 +205,7 @@ void test_dynrankview_op_perf( const int par_size )
     timer.reset();
     Kokkos::View<double*,DeviceType> sumview("sumview",par_size);
     Kokkos::parallel_for( policy , typename FunctorType::SumComputationTest(testview, sumview) );
-    DeviceType::fence();
+    DeviceType().fence();
     elapsed_time_compview = timer.seconds();
     std::cout << " View sum computation time: " << elapsed_time_view << std::endl;
 
@@ -215,7 +215,7 @@ void test_dynrankview_op_perf( const int par_size )
 
     timer.reset();
     Kokkos::parallel_for( policy , FunctorStrideType(teststrideview) );
-    DeviceType::fence();
+    DeviceType().fence();
     elapsed_time_strideview = timer.seconds();
     std::cout << " Strided View time (init only): " << elapsed_time_strideview << std::endl;
   }
@@ -226,7 +226,7 @@ void test_dynrankview_op_perf( const int par_size )
     timer.reset();
     Kokkos::RangePolicy<DeviceType> policy(0,par_size);
     Kokkos::parallel_for( policy , FunctorType(testview) );
-    DeviceType::fence();
+    DeviceType().fence();
     elapsed_time_view_rank7 = timer.seconds();
     std::cout << " View Rank7 time (init only): " << elapsed_time_view_rank7 << std::endl;
   }
@@ -237,14 +237,14 @@ void test_dynrankview_op_perf( const int par_size )
     timer.reset();
     Kokkos::RangePolicy<DeviceType> policy(0,par_size);
     Kokkos::parallel_for( policy , FunctorType(testdrview) );
-    DeviceType::fence();
+    DeviceType().fence();
     elapsed_time_drview = timer.seconds();
     std::cout << " DynRankView time (init only): " << elapsed_time_drview << std::endl;
 
     timer.reset();
     Kokkos::DynRankView<double,DeviceType> sumview("sumview",par_size);
     Kokkos::parallel_for( policy , typename FunctorType::SumComputationTest(testdrview, sumview) );
-    DeviceType::fence();
+    DeviceType().fence();
     elapsed_time_compdrview = timer.seconds();
     std::cout << " DynRankView sum computation time: " << elapsed_time_compdrview << std::endl;
 

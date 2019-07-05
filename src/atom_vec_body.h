@@ -88,10 +88,12 @@ class AtomVecBody : public AtomVec {
   void data_body(int, int, int, int *, double *);
 
   // methods used by other classes to query/set body info
-  
+
   double radius_body(int, int, int *, double *);
   void set_quat(int, double *);
-  
+
+  int nlocal_bonus;
+
  private:
   tagint *tag;
   int *type,*mask;
@@ -102,7 +104,7 @@ class AtomVecBody : public AtomVec {
   double **angmom,**torque;
   int *body;
 
-  int nlocal_bonus,nghost_bonus,nmax_bonus;
+  int nghost_bonus,nmax_bonus;
   int intdoubleratio;       // sizeof(double) / sizeof(int)
 
   MyPoolChunk<int> *icp;
@@ -128,7 +130,7 @@ E: Invalid atom_style body command
 
 No body style argument was provided.
 
-E: Unknown body style
+E: Unrecognized body style
 
 The choice of body style is unknown.
 

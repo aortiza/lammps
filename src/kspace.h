@@ -44,6 +44,7 @@ class KSpace : protected Pointers {
   int dispersionflag;            // 1 if a LJ/dispersion solver
   int tip4pflag;                 // 1 if a TIP4P solver
   int dipoleflag;                // 1 if a dipole solver
+  int spinflag;			 // 1 if a spin solver
   int differentiation_flag;
   int neighrequest_flag;         // used to avoid obsolete construction
                                  // of neighbor lists
@@ -68,7 +69,7 @@ class KSpace : protected Pointers {
                                     // dispersion solver (force units)
   double accuracy_kspace_6;         // reciprocal space accuracy for
                                     // dispersion solver (force units)
-  int auto_disp_flag;		    // use automatic parameter generation for pppm/disp
+  int auto_disp_flag;           // use automatic parameter generation for pppm/disp
   double two_charge_force;          // force in user units of two point
                                     // charges separated by 1 Angstrom
 
@@ -92,7 +93,7 @@ class KSpace : protected Pointers {
 
   double splittol;                // tolerance for when to truncate splitting
 
-  KSpace(class LAMMPS *, int, char **);
+  KSpace(class LAMMPS *);
   virtual ~KSpace();
   void triclinic_check();
   void modify_params(int, char **);
@@ -108,10 +109,11 @@ class KSpace : protected Pointers {
 
   // public so can be called by commands that change charge
 
-  void qsum_qsq();
+  void qsum_qsq(int warning_flag = 1);
 
   // general child-class methods
 
+  virtual void settings(int, char **) {};
   virtual void init() = 0;
   virtual void setup() = 0;
   virtual void setup_grid() {};
@@ -126,11 +128,13 @@ class KSpace : protected Pointers {
   virtual int timing(int, double &, double &) {return 0;}
   virtual int timing_1d(int, double &) {return 0;}
   virtual int timing_3d(int, double &) {return 0;}
+
+  virtual int modify_param(int, char **) {return 0;}
   virtual double memory_usage() {return 0.0;}
 
 /* ----------------------------------------------------------------------
    compute gamma for MSM and pair styles
-   see Eq 4 from Parallel Computing 35 (2009) 164177
+   see Eq 4 from Parallel Computing 35 (2009) 164-177
 ------------------------------------------------------------------------- */
 
   double gamma(const double &rho) const
@@ -191,6 +195,10 @@ class KSpace : protected Pointers {
   int kx_ewald,ky_ewald,kz_ewald;   // kspace settings for Ewald sum
 
   void pair_check();
+  void ev_init(int eflag, int vflag, int alloc = 1) {
+    if (eflag||vflag) ev_setup(eflag, vflag, alloc);
+    else evflag = eflag_either = eflag_global = eflag_atom = vflag_either = vflag_global = vflag_atom = 0;
+  }
   void ev_setup(int, int, int alloc = 1);
   double estimate_table_accuracy(double, double);
 };
@@ -243,6 +251,18 @@ command-line option when running LAMMPS to see the offending line.
 E: Bad kspace_modify slab parameter
 
 Kspace_modify value for the slab/volume keyword must be >= 2.0.
+
+E: Kspace_modify mesh parameter must be all zero or all positive
+
+Valid kspace mesh parameters are >0. The code will try to auto-detect
+suitable values when all three mesh sizes are set to zero (the default).
+
+E: Kspace_modify mesh/disp parameter must be all zero or all positive
+
+Valid kspace mesh/disp parameters are >0. The code will try to auto-detect
+suitable values when all three mesh sizes are set to zero [and]
+the required accuracy via {force/disp/real} as well as
+{force/disp/kspace} is set.
 
 W: Kspace_modify slab param < 2.0 may cause unphysical behavior
 

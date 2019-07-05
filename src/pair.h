@@ -61,6 +61,7 @@ class Pair : protected Pointers {
   int dispersionflag;            // 1 if compatible with LJ/dispersion solver
   int tip4pflag;                 // 1 if compatible with TIP4P solver
   int dipoleflag;                // 1 if compatible with dipole solver
+  int spinflag;			 // 1 if compatible with spin solver
   int reinitflag;                // 1 if compatible with fix adapt and alike
 
   int tail_flag;                 // pair_modify flag for LJ tail correction
@@ -95,6 +96,10 @@ class Pair : protected Pointers {
   int allocated;                 // 0/1 = whether arrays are allocated
                                  //       public so external driver can check
   int compute_flag;              // 0 if skip compute()
+
+  enum{GEOMETRIC,ARITHMETIC,SIXTHPOWER};   // mixing options
+
+  int beyond_contact, nondefault_history_transfer;   // for granular styles
 
   // KOKKOS host/device flag and data masks
 
@@ -138,7 +143,7 @@ class Pair : protected Pointers {
 
   virtual double single(int, int, int, int,
                         double, double, double,
-			double& fforce) {
+                        double& fforce) {
     fforce = 0.0;
     return 0.0;
   }
@@ -155,8 +160,8 @@ class Pair : protected Pointers {
   virtual void free_tables();
   virtual void free_disp_tables();
 
-  virtual void write_restart(FILE *) {}
-  virtual void read_restart(FILE *) {}
+  virtual void write_restart(FILE *);
+  virtual void read_restart(FILE *);
   virtual void write_restart_settings(FILE *) {}
   virtual void read_restart_settings(FILE *) {}
   virtual void write_data(FILE *) {}
@@ -178,6 +183,7 @@ class Pair : protected Pointers {
   virtual void min_xf_pointers(int, double **, double **) {}
   virtual void min_xf_get(int) {}
   virtual void min_x_set(int) {}
+  virtual void transfer_history(double *, double*) {}
 
   // management of callbacks to be run from ev_tally()
 
@@ -191,8 +197,6 @@ class Pair : protected Pointers {
  protected:
   int instance_me;        // which Pair class instantiation I am
 
-  enum{GEOMETRIC,ARITHMETIC,SIXTHPOWER};   // mixing options
-
   int special_lj[4];           // copied from force->special_lj for Kokkos
 
   int suffix_flag;             // suffix compatibility flag
@@ -202,10 +206,15 @@ class Pair : protected Pointers {
   double tabinner;                     // inner cutoff for Coulomb table
   double tabinner_disp;                 // inner cutoff for dispersion table
 
+
  public:
   // custom data type for accessing Coulomb tables
 
   typedef union {int i; float f;} union_int_float_t;
+
+  // Accessor for the user-intel package to determine virial calc for hybrid
+
+  inline int fdotr_is_set() const { return vflag_fdotr; }
 
  protected:
   int vflag_fdotr;
@@ -214,6 +223,10 @@ class Pair : protected Pointers {
   int copymode;   // if set, do not deallocate during destruction
                   // required when classes are used as functors by Kokkos
 
+  void ev_init(int eflag, int vflag, int alloc = 1) {
+    if (eflag||vflag) ev_setup(eflag, vflag, alloc);
+    else ev_unset();
+  }
   virtual void ev_setup(int, int, int alloc = 1);
   void ev_unset();
   void ev_tally_full(int, double, double, double, double, double, double);
@@ -268,7 +281,7 @@ E: Cannot use pair tail corrections with 2d simulations
 
 The correction factors are only currently defined for 3d systems.
 
-W: Using pair tail corrections with nonperiodic system
+W: Using pair tail corrections with non-periodic system
 
 This is probably a bogus thing to do, since tail corrections are
 computed by integrating the density of a periodic system out to
@@ -300,6 +313,12 @@ New coding for the pair style would need to be done.
 E: Pair style requires a KSpace style
 
 No kspace style is defined.
+
+E: BUG: restartinfo=1 but no restart support in pair style
+
+The pair style has a bug, where it does not support reading
+and writing information to a restart file, but does not set
+the member variable restartinfo to 0 as required in that case.
 
 E: Cannot yet use compute tally with Kokkos
 

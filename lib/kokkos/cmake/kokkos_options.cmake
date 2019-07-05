@@ -14,6 +14,7 @@ list(APPEND KOKKOS_INTERNAL_ENABLE_OPTIONS_LIST
      OpenMP
      Pthread
      Qthread
+     HPX
      Cuda
      ROCm
      HWLOC
@@ -23,13 +24,16 @@ list(APPEND KOKKOS_INTERNAL_ENABLE_OPTIONS_LIST
      Cuda_Relocatable_Device_Code
      Cuda_UVM
      Cuda_LDG_Intrinsic
+     HPX_ASYNC_DISPATCH
      Debug
      Debug_DualView_Modify_Check
-     Debug_Bounds_Checkt
+     Debug_Bounds_Check
      Compiler_Warnings
      Profiling
      Profiling_Load_Print
      Aggressive_Vectorization
+     Deprecated_Code
+     Explicit_Instantiation
      )
 
 #-------------------------------------------------------------------------------
@@ -60,14 +64,11 @@ foreach(opt ${KOKKOS_INTERNAL_ENABLE_OPTIONS_LIST})
   ENDIF()
 endforeach()
 
+IF(DEFINED Kokkos_ARCH)
+  MESSAGE(FATAL_ERROR "Defined Kokkos_ARCH, use KOKKOS_ARCH instead!")
+ENDIF()
 IF(DEFINED Kokkos_Arch)
-  IF(DEFINED KOKKOS_ARCH)
-    IF(NOT (${KOKKOS_ARCH} STREQUAL "${Kokkos_Arch}"))
-      MESSAGE(FATAL_ERROR "Defined both Kokkos_Arch and KOKKOS_ARCH and they differ!")
-    ENDIF()
-  ELSE()
-    SET(KOKKOS_ARCH ${Kokkos_Arch})
-  ENDIF()
+  MESSAGE(FATAL_ERROR "Defined Kokkos_Arch, use KOKKOS_ARCH instead!")
 ENDIF()
   
 #-------------------------------------------------------------------------------
@@ -80,6 +81,7 @@ list(APPEND KOKKOS_ARCH_LIST
      ARMv80          # (HOST) ARMv8.0 Compatible CPU
      ARMv81          # (HOST) ARMv8.1 Compatible CPU
      ARMv8-ThunderX  # (HOST) ARMv8 Cavium ThunderX CPU
+     ARMv8-TX2       # (HOST) ARMv8 Cavium ThunderX2 CPU
      WSM             # (HOST) Intel Westmere CPU
      SNB             # (HOST) Intel Sandy/Ivy Bridge CPUs
      HSW             # (HOST) Intel Haswell CPUs
@@ -102,6 +104,9 @@ list(APPEND KOKKOS_ARCH_LIST
      Maxwell53       # (GPU) NVIDIA Maxwell generation CC 5.3
      Pascal60        # (GPU) NVIDIA Pascal generation CC 6.0
      Pascal61        # (GPU) NVIDIA Pascal generation CC 6.1
+     Volta70         # (GPU) NVIDIA Volta generation CC 7.0
+     Volta72         # (GPU) NVIDIA Volta generation CC 7.2
+     Turing75         # (GPU) NVIDIA Turing generation CC 7.5
     )
 
 # List of possible device architectures.
@@ -113,6 +118,7 @@ list(APPEND KOKKOS_DEVICES_LIST
     OpenMP        # OpenMP
     Pthread       # pthread
     Qthreads      # qthreads
+    HPX           # HPX
     Serial        # serial
     ROCm          # Relocatable device code
     )
@@ -120,11 +126,18 @@ list(APPEND KOKKOS_DEVICES_LIST
 # List of possible TPLs for Kokkos
 # From Makefile.kokkos: Options: hwloc,librt,experimental_memkind
 set(KOKKOS_USE_TPLS_LIST)
+if(APPLE)
+list(APPEND KOKKOS_USE_TPLS_LIST
+    HWLOC          # hwloc
+    MEMKIND        # experimental_memkind
+    )
+else()
 list(APPEND KOKKOS_USE_TPLS_LIST
     HWLOC          # hwloc
     LIBRT          # librt
     MEMKIND        # experimental_memkind
     )
+endif()
 # Map of cmake variables to Makefile variables
 set(KOKKOS_INTERNAL_HWLOC hwloc)
 set(KOKKOS_INTERNAL_LIBRT librt)
@@ -164,11 +177,25 @@ set(KOKKOS_INTERNAL_LAMBDA enable_lambda)
 
 
 #-------------------------------------------------------------------------------
+# List of possible Options for HPX
+#-------------------------------------------------------------------------------
+# From Makefile.kokkos: Options: enable_async_dispatch
+set(KOKKOS_HPX_OPTIONS_LIST)
+list(APPEND KOKKOS_HPX_OPTIONS_LIST
+    ASYNC_DISPATCH # enable_async_dispatch
+    )
+
+# Map of cmake variables to Makefile variables
+set(KOKKOS_INTERNAL_ENABLE_ASYNC_DISPATCH enable_async_dispatch)
+
+
+#-------------------------------------------------------------------------------
 #------------------------------- Create doc strings ----------------------------
 #-------------------------------------------------------------------------------
 
 set(tmpr "\n       ")
 string(REPLACE ";" ${tmpr} KOKKOS_INTERNAL_ARCH_DOCSTR "${KOKKOS_ARCH_LIST}")
+set(KOKKOS_INTERNAL_ARCH_DOCSTR "${tmpr}${KOKKOS_INTERNAL_ARCH_DOCSTR}")
 # This would be useful, but we use Foo_ENABLE mechanisms
 #string(REPLACE ";" ${tmpr} KOKKOS_INTERNAL_DEVICES_DOCSTR "${KOKKOS_DEVICES_LIST}")
 #string(REPLACE ";" ${tmpr} KOKKOS_INTERNAL_USE_TPLS_DOCSTR "${KOKKOS_USE_TPLS_LIST}")
@@ -191,6 +218,11 @@ set(KOKKOS_SEPARATE_LIBS OFF CACHE BOOL "OFF = kokkos.  ON = kokkoscore, kokkosc
 # Qthreads options.
 set(KOKKOS_QTHREADS_DIR "" CACHE PATH "Location of Qthreads library.")
 
+# HPX options.
+set(KOKKOS_HPX_DIR "" CACHE PATH "Location of HPX library.")
+
+# Whether to build separate libraries or now
+set(KOKKOS_SEPARATE_TESTS OFF CACHE BOOL "Provide unit test targets with finer granularity.")
 
 #-------------------------------------------------------------------------------
 #------------------------------- KOKKOS_DEVICES --------------------------------
@@ -203,6 +235,11 @@ IF(Trilinos_ENABLE_Kokkos)
     set_kokkos_default_default(QTHREADS ${TPL_ENABLE_QTHREAD})
   ELSE()
     set_kokkos_default_default(QTHREADS OFF)
+  ENDIF()
+  IF(TPL_ENABLE_HPX)
+    set_kokkos_default_default(HPX ON)
+  ELSE()
+    set_kokkos_default_default(HPX OFF)
   ENDIF()
   IF(Trilinos_ENABLE_OpenMP)
     set_kokkos_default_default(OPENMP ${Trilinos_ENABLE_OpenMP})
@@ -220,6 +257,7 @@ ELSE()
   set_kokkos_default_default(OPENMP OFF)
   set_kokkos_default_default(PTHREAD OFF)
   set_kokkos_default_default(QTHREAD OFF)
+  set_kokkos_default_default(HPX OFF)
   set_kokkos_default_default(CUDA OFF)
   set_kokkos_default_default(ROCM OFF)
 ENDIF()
@@ -230,6 +268,7 @@ set(KOKKOS_ENABLE_SERIAL ${KOKKOS_INTERNAL_ENABLE_SERIAL_DEFAULT} CACHE BOOL "Wh
 set(KOKKOS_ENABLE_OPENMP ${KOKKOS_INTERNAL_ENABLE_OPENMP_DEFAULT} CACHE BOOL "Enable OpenMP support in Kokkos." FORCE)
 set(KOKKOS_ENABLE_PTHREAD ${KOKKOS_INTERNAL_ENABLE_PTHREAD_DEFAULT} CACHE BOOL "Enable Pthread support in Kokkos.")
 set(KOKKOS_ENABLE_QTHREADS ${KOKKOS_INTERNAL_ENABLE_QTHREADS_DEFAULT} CACHE BOOL "Enable Qthreads support in Kokkos.")
+set(KOKKOS_ENABLE_HPX ${KOKKOS_INTERNAL_ENABLE_HPX_DEFAULT} CACHE BOOL "Enable HPX support in Kokkos.")
 set(KOKKOS_ENABLE_CUDA ${KOKKOS_INTERNAL_ENABLE_CUDA_DEFAULT} CACHE BOOL "Enable CUDA support in Kokkos.")
 set(KOKKOS_ENABLE_ROCM ${KOKKOS_INTERNAL_ENABLE_ROCM_DEFAULT} CACHE BOOL "Enable ROCm support in Kokkos.")
 
@@ -263,8 +302,11 @@ set(KOKKOS_ENABLE_PROFILING ${KOKKOS_INTERNAL_ENABLE_PROFILING_DEFAULT} CACHE BO
 set_kokkos_default_default(PROFILING_LOAD_PRINT OFF)
 set(KOKKOS_ENABLE_PROFILING_LOAD_PRINT ${KOKKOS_INTERNAL_ENABLE_PROFILING_LOAD_PRINT_DEFAULT} CACHE BOOL "Enable profile load print.")
 
+set_kokkos_default_default(DEPRECATED_CODE ON)
+set(KOKKOS_ENABLE_DEPRECATED_CODE ${KOKKOS_INTERNAL_ENABLE_DEPRECATED_CODE_DEFAULT} CACHE BOOL "Enable deprecated code.")
 
-
+set_kokkos_default_default(EXPLICIT_INSTANTIATION OFF)
+set(KOKKOS_ENABLE_EXPLICIT_INSTANTIATION ${KOKKOS_INTERNAL_ENABLE_EXPLICIT_INSTANTIATION_DEFAULT} CACHE BOOL "Enable explicit template instantiation.")
 
 #-------------------------------------------------------------------------------
 #------------------------------- KOKKOS_USE_TPLS -------------------------------
@@ -330,6 +372,18 @@ set(KOKKOS_ENABLE_CUDA_LAMBDA ${KOKKOS_INTERNAL_ENABLE_CUDA_LAMBDA_DEFAULT} CACH
 
 
 #-------------------------------------------------------------------------------
+#------------------------------- KOKKOS_HPX_OPTIONS ----------------------------
+#-------------------------------------------------------------------------------
+
+# HPX options.
+# Set Defaults
+set_kokkos_default_default(HPX_ASYNC_DISPATCH OFF)
+
+# Set actual options
+set(KOKKOS_ENABLE_HPX_ASYNC_DISPATCH ${KOKKOS_INTERNAL_ENABLE_HPX_ASYNC_DISPATCH_DEFAULT} CACHE BOOL "Enable HPX async dispatch.")
+
+
+#-------------------------------------------------------------------------------
 #----------------------- HOST ARCH AND LEGACY TRIBITS --------------------------
 #-------------------------------------------------------------------------------
 
@@ -362,4 +416,3 @@ foreach(opt ${KOKKOS_INTERNAL_ENABLE_OPTIONS_LIST})
     SET(Kokkos_ENABLE_${opt} ${KOKKOS_ENABLE_${OPT}} CACHE BOOL "CamelCase Compatibility setting for KOKKOS_ENABLE_${OPT}")
   ENDIF()
 endforeach()
-

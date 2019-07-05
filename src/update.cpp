@@ -11,8 +11,8 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#include <string.h>
-#include <stdlib.h>
+#include <cstring>
+#include <cstdlib>
 #include "update.h"
 #include "integrate.h"
 #include "min.h"
@@ -46,10 +46,10 @@ Update::Update(LAMMPS *lmp) : Pointers(lmp)
   whichflag = 0;
   firststep = laststep = 0;
   beginstep = endstep = 0;
-  setupflag = 0;
-  multireplica = 0;
-
   restrict_output = 0;
+  setupflag = 0;
+  post_integrate = 0;
+  multireplica = 0;
 
   eflag_global = vflag_global = -1;
 
@@ -246,7 +246,7 @@ void Update::set_units(const char *style)
     force->hhmrr2e = 0.0;
     force->mvh2r = 0.0;
     force->angstrom = 1.88972612;
-    force->femtosecond = 41.34137413;
+    force->femtosecond = 1.0;
     force->qelectron = 1.0;
 
     dt = 0.001;
@@ -316,8 +316,8 @@ void Update::create_integrate(int narg, char **arg, int trysuffix)
 
   if (sflag) {
     char estyle[256];
-    if (sflag == 1) sprintf(estyle,"%s/%s",arg[0],lmp->suffix);
-    else sprintf(estyle,"%s/%s",arg[0],lmp->suffix2);
+    if (sflag == 1) snprintf(estyle,256,"%s/%s",arg[0],lmp->suffix);
+    else snprintf(estyle,256,"%s/%s",arg[0],lmp->suffix2);
     int n = strlen(estyle) + 1;
     integrate_style = new char[n];
     strcpy(integrate_style,estyle);
@@ -339,7 +339,7 @@ void Update::new_integrate(char *style, int narg, char **arg,
     if (lmp->suffix) {
       sflag = 1;
       char estyle[256];
-      sprintf(estyle,"%s/%s",style,lmp->suffix);
+      snprintf(estyle,256,"%s/%s",style,lmp->suffix);
       if (integrate_map->find(estyle) != integrate_map->end()) {
         IntegrateCreator integrate_creator = (*integrate_map)[estyle];
         integrate = integrate_creator(lmp, narg, arg);
@@ -350,7 +350,7 @@ void Update::new_integrate(char *style, int narg, char **arg,
     if (lmp->suffix2) {
       sflag = 2;
       char estyle[256];
-      sprintf(estyle,"%s/%s",style,lmp->suffix2);
+      snprintf(estyle,256,"%s/%s",style,lmp->suffix2);
       if (integrate_map->find(estyle) != integrate_map->end()) {
         IntegrateCreator integrate_creator = (*integrate_map)[estyle];
         integrate = integrate_creator(lmp, narg, arg);

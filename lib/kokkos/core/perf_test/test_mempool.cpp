@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -153,6 +153,7 @@ struct TestFunctor {
       typedef Kokkos::RangePolicy< ExecSpace , TagDel > policy ;
 
       Kokkos::parallel_for( policy(0,range_iter), *this );
+      Kokkos::fence();
     }
 
   //----------------------------------------

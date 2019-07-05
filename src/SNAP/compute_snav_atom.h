@@ -36,17 +36,15 @@ class ComputeSNAVAtom : public Compute {
   double memory_usage();
 
  private:
-  int nmax, njmax, diagonalstyle;
-  int ncoeff, twoncoeff, threencoeff, fourncoeff, fivencoeff, sixncoeff;
-  int ncoeffq, twoncoeffq, threencoeffq, fourncoeffq, fivencoeffq, sixncoeffq;
+  int nmax;
+  int ncoeff, nperdim;
   double **cutsq;
   class NeighList *list;
   double **snav;
   double rcutfac;
   double *radelem;
   double *wjelem;
-  class SNA** snaptr;
-  double cutmax;
+  class SNA* snaptr;
   int quadraticflag;
 };
 

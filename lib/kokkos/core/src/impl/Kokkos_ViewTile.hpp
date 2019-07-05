@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -49,6 +49,9 @@
 
 namespace Kokkos {
 namespace Impl {
+
+// ===========================================================================
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
 
 // View mapping for rank two tiled array
 
@@ -143,10 +146,25 @@ public:
 
   //----------------------------------------
 
-  KOKKOS_FUNCTION_DEFAULTED ~ViewOffset() = default ;
-  KOKKOS_FUNCTION_DEFAULTED ViewOffset() = default ;
-  KOKKOS_FUNCTION_DEFAULTED ViewOffset( const ViewOffset & ) = default ;
-  KOKKOS_FUNCTION_DEFAULTED ViewOffset & operator = ( const ViewOffset & ) = default ;
+#ifdef KOKKOS_CUDA_9_DEFAULTED_BUG_WORKAROUND
+  KOKKOS_INLINE_FUNCTION ~ViewOffset() {}
+  KOKKOS_INLINE_FUNCTION ViewOffset() {}
+  KOKKOS_INLINE_FUNCTION ViewOffset( const ViewOffset & rhs )
+  : m_dim(rhs.m_dim)
+  , m_tile_N0(rhs.m_tile_N0)
+  {
+  }
+  KOKKOS_INLINE_FUNCTION ViewOffset & operator = ( const ViewOffset & rhs ) {
+    m_dim = rhs.m_dim;
+    m_tile_N0 = rhs.m_tile_N0;
+    return *this;
+  }
+#else
+  KOKKOS_INLINE_FUNCTION ~ViewOffset() = default;
+  KOKKOS_INLINE_FUNCTION ViewOffset() = default;
+  KOKKOS_INLINE_FUNCTION ViewOffset( const ViewOffset & ) = default;
+  KOKKOS_INLINE_FUNCTION ViewOffset & operator = ( const ViewOffset & ) = default;
+#endif
 
   template< unsigned TrivialScalarSize >
   KOKKOS_INLINE_FUNCTION
@@ -187,16 +205,22 @@ struct ViewMapping
       typedef typename src_map_type::offset_type  src_offset_type ;
 
       dst = dst_map_type(
-         dst_handle_type( src.m_handle +
-                        ( ( i_tile0 + src.m_offset.m_tile_N0 * i_tile1 ) << src_offset_type::SHIFT_T ) ) ,
+         dst_handle_type( src.m_impl_handle +
+                        ( ( i_tile0 + src.m_impl_offset.m_tile_N0 * i_tile1 ) << src_offset_type::SHIFT_T ) ) ,
          dst_offset_type() );
     }
 };
+
+#endif // KOKKOS_ENABLE_DEPRECATED_CODE
+// ===============================================================================
 
 } /* namespace Impl */
 } /* namespace Kokkos */
 
 namespace Kokkos {
+
+// ==============================================================================
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
 
 template< typename T , unsigned N0 , unsigned N1 , class ... P >
 KOKKOS_INLINE_FUNCTION
@@ -213,6 +237,9 @@ tile_subview( const Kokkos::View<T**,Kokkos::LayoutTileLeft<N0,N1,true>,P...> & 
   return Kokkos::View< T[N0][N1] , LayoutLeft , P... >
     ( src , SrcLayout() , i_tile0 , i_tile1 );
 }
+
+#endif // KOKKOS_ENABLE_DEPRECATED_CODE
+// ===============================================================================
 
 } /* namespace Kokkos */
 

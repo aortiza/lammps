@@ -22,10 +22,10 @@
 ------------------------------------------------------------------------------------------- */
 
 #include <mpi.h>
-#include <math.h>
+#include <cmath>
 #include "math_const.h"
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include "pair_multi_lucy_rx_kokkos.h"
 #include "atom_kokkos.h"
 #include "force.h"
@@ -148,8 +148,7 @@ void PairMultiLucyRXKokkos<DeviceType>::compute_style(int eflag_in, int vflag_in
   vflag = vflag_in;
 
   if (neighflag == FULL) no_virial_fdotr_compute = 1;
-  if (eflag || vflag) ev_setup(eflag,vflag,0);
-  else evflag = vflag_fdotr = 0;
+  ev_init(eflag,vflag,0);
 
   // reallocate per-atom arrays if necessary
 
@@ -181,7 +180,7 @@ void PairMultiLucyRXKokkos<DeviceType>::compute_style(int eflag_in, int vflag_in
 
   {
     const int ntotal = nlocal + nghost;
-    if (ntotal > d_mixWtSite1.dimension_0()) {
+    if (ntotal > d_mixWtSite1.extent(0)) {
       d_mixWtSite1old = typename AT::t_float_1d("PairMultiLucyRX::mixWtSite1old",ntotal);
       d_mixWtSite2old = typename AT::t_float_1d("PairMultiLucyRX::mixWtSite2old",ntotal);
       d_mixWtSite1 = typename AT::t_float_1d("PairMultiLucyRX::mixWtSite1",ntotal);
@@ -887,15 +886,15 @@ void PairMultiLucyRXKokkos<DeviceType>::create_kokkos_tables()
     h_table->innersq[i] = tb->innersq;
     h_table->invdelta[i] = tb->invdelta;
 
-    for(int j = 0; j<h_table->rsq.dimension_1(); j++)
+    for(int j = 0; j<h_table->rsq.extent(1); j++)
       h_table->rsq(i,j) = tb->rsq[j];
-    for(int j = 0; j<h_table->e.dimension_1(); j++)
+    for(int j = 0; j<h_table->e.extent(1); j++)
       h_table->e(i,j) = tb->e[j];
-    for(int j = 0; j<h_table->de.dimension_1(); j++)
+    for(int j = 0; j<h_table->de.extent(1); j++)
       h_table->de(i,j) = tb->de[j];
-    for(int j = 0; j<h_table->f.dimension_1(); j++)
+    for(int j = 0; j<h_table->f.extent(1); j++)
       h_table->f(i,j) = tb->f[j];
-    for(int j = 0; j<h_table->df.dimension_1(); j++)
+    for(int j = 0; j<h_table->df.extent(1); j++)
       h_table->df(i,j) = tb->df[j];
   }
 
@@ -993,7 +992,7 @@ void PairMultiLucyRXKokkos<DeviceType>::settings(int narg, char **arg)
 
 namespace LAMMPS_NS {
 template class PairMultiLucyRXKokkos<LMPDeviceType>;
-#ifdef KOKKOS_HAVE_CUDA
+#ifdef KOKKOS_ENABLE_CUDA
 template class PairMultiLucyRXKokkos<LMPHostType>;
 #endif
 }

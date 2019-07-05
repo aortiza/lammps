@@ -17,9 +17,9 @@
 ------------------------------------------------------------------------- */
 
 #include <mpi.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include "fix_neb.h"
 #include "universe.h"
 #include "update.h"
@@ -270,7 +270,7 @@ void FixNEB::min_setup(int vflag)
 
 /* ---------------------------------------------------------------------- */
 
-void FixNEB::min_post_force(int vflag)
+void FixNEB::min_post_force(int /*vflag*/)
 {
   double vprev,vnext;
   double delxp,delyp,delzp,delxn,delyn,delzn;
@@ -302,7 +302,7 @@ void FixNEB::min_post_force(int vflag)
       int procFirst;
       procFirst=universe->root_proc[0];
       MPI_Bcast(&vIni,1,MPI_DOUBLE,procFirst,uworld);
-    }else {
+    } else {
       if (me == 0)
         MPI_Bcast(&vIni,1,MPI_DOUBLE,0,rootworld);
 
@@ -425,10 +425,14 @@ void FixNEB::min_post_force(int vflag)
             tangent[i][0] = vmax*delxn + vmin*delxp;
             tangent[i][1] = vmax*delyn + vmin*delyp;
             tangent[i][2] = vmax*delzn + vmin*delzp;
-          } else {
+          } else if (vnext < vprev) {
             tangent[i][0] = vmin*delxn + vmax*delxp;
             tangent[i][1] = vmin*delyn + vmax*delyp;
             tangent[i][2] = vmin*delzn + vmax*delzp;
+          } else { // vnext == vprev, e.g. for potentials that do not compute an energy
+            tangent[i][0] = delxn + delxp;
+            tangent[i][1] = delyn + delyp;
+            tangent[i][2] = delzn + delzp;
           }
         }
 

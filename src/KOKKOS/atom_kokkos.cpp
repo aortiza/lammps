@@ -22,6 +22,7 @@
 #include "memory_kokkos.h"
 #include "error.h"
 #include "kokkos.h"
+#include "atom_masks.h"
 
 using namespace LAMMPS_NS;
 
@@ -119,7 +120,7 @@ void AtomKokkos::allocate_type_arrays()
 {
   if (avec->mass_type) {
     k_mass = DAT::tdual_float_1d("Mass",ntypes+1);
-    mass = k_mass.h_view.ptr_on_device();
+    mass = k_mass.h_view.data();
     mass_setflag = new int[ntypes+1];
     for (int itype = 1; itype <= ntypes; itype++) mass_setflag[itype] = 0;
     k_mass.modify<LMPHostType>();
@@ -270,8 +271,10 @@ int AtomKokkos::add_custom(const char *name, int flag)
     int n = strlen(name) + 1;
     dname[index] = new char[n];
     strcpy(dname[index],name);
+    this->sync(Device,DVECTOR_MASK);
     memoryKK->grow_kokkos(k_dvector,dvector,ndvector,nmax,
                         "atom:dvector");
+    this->modified(Device,DVECTOR_MASK);
   }
 
   return index;

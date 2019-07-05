@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -83,6 +83,7 @@ void test_scatter_view(int m, int n)
       for (int k = 0; k < m; ++k) {
         Kokkos::parallel_for(policy, f2, "hand_coded_duplicate_scatter_view_test");
       }
+      Kokkos::fence();
       auto t = timer.seconds();
       std::cout << "hand-coded test took " << t << " seconds\n";
     }
@@ -101,6 +102,7 @@ void test_scatter_view(int m, int n)
       for (int k = 0; k < m; ++k) {
         Kokkos::parallel_for(policy, f, "scatter_view_test");
       }
+      Kokkos::fence();
       auto t = timer.seconds();
       std::cout << "test took " << t << " seconds\n";
     }

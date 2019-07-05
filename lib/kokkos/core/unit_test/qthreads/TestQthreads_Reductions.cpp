@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -102,7 +102,7 @@ TEST_F( qthreads, scan )
   TestScan< Kokkos::Qthreads >( 0 );
   TestScan< Kokkos::Qthreads >( 100000 );
   TestScan< Kokkos::Qthreads >( 10000000 );
-  Kokkos::Qthreads::fence();
+  Kokkos::Qthreads().fence();
 #endif
 }
 
@@ -118,7 +118,7 @@ TEST_F( qthreads, scan_small )
   TestScanFunctor( 1000000 );
   TestScanFunctor( 10000000 );
 
-  Kokkos::Qthreads::fence();
+  Kokkos::Qthreads().fence();
 #endif
 }
 

@@ -2,25 +2,25 @@
  LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
  http://lammps.sandia.gov, Sandia National Laboratories
  Steve Plimpton, sjplimp@sandia.gov
- 
+
  Copyright (2003) Sandia Corporation.  Under the terms of Contract
  DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
  certain rights in this software.  This software is distributed under
  the GNU General Public License.
- 
+
  See the README file in the top-level LAMMPS directory.
  ------------------------------------------------------------------------- */
 
 /* -----------------------------------------------------------------------
- Contributing author:   
+ Contributing author:
             Rodolfo Paula Leite (Unicamp/Brazil) - pl.rodolfo@gmail.com
             Maurice de Koning (Unicamp/Brazil) - dekoning@ifi.unicamp.br
  ------------------------------------------------------------------------- */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include "pair_ufm.h"
 #include "atom.h"
 #include "comm.h"
@@ -74,8 +74,7 @@ void PairUFM::compute(int eflag, int vflag)
   int *ilist,*jlist,*numneigh,**firstneigh;
 
   evdwl = 0.0;
-  if (eflag || vflag) ev_setup(eflag,vflag);
-  else evflag = vflag_fdotr = 0;
+  ev_init(eflag,vflag);
 
   double **x = atom->x;
   double **f = atom->f;
@@ -233,7 +232,7 @@ double PairUFM::init_one(int i, int j)
     sigma[i][j] = mix_distance(sigma[i][i],sigma[j][j]);
     cut[i][j] = mix_distance(cut[i][i],cut[j][j]);
   }
- 
+
   uf1[i][j] = 2.0 * epsilon[i][j] / pow(sigma[i][j],2.0);
   uf2[i][j] = 1.0 / pow(sigma[i][j],2.0);
   uf3[i][j] = epsilon[i][j];
@@ -353,8 +352,8 @@ void PairUFM::write_data_all(FILE *fp)
 
 /* ---------------------------------------------------------------------- */
 
-double PairUFM::single(int i, int j, int itype, int jtype, double rsq,
-                         double factor_coul, double factor_lj,
+double PairUFM::single(int /*i*/, int /*j*/, int itype, int jtype, double rsq,
+                         double /*factor_coul*/, double factor_lj,
                          double &fforce)
 {
   double expuf,phiuf;

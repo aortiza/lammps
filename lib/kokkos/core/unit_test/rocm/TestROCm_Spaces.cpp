@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -176,7 +176,7 @@ struct TestViewROCmAccessible {
   {
     TestViewROCmAccessible self;
     Kokkos::parallel_for( Kokkos::RangePolicy< typename MemSpace::execution_space, TagInit >( 0, N ), self );
-    MemSpace::execution_space::fence();
+    typename MemSpace::execution_space().fence();
 
     // Next access is a different execution space, must complete prior kernel.
     long error_count = -1;

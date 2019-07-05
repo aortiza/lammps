@@ -31,7 +31,10 @@ PairStyle(snap/kk/host,PairSNAPKokkos<LMPHostType>)
 namespace LAMMPS_NS {
 
 template<int NEIGHFLAG, int EVFLAG>
-struct TagPairSNAP{};
+struct TagPairSNAPCompute{};
+
+struct TagPairSNAPBeta{};
+struct TagPairSNAPBispectrum{};
 
 template<class DeviceType>
 class PairSNAPKokkos : public PairSNAP {
@@ -44,7 +47,7 @@ public:
 
   PairSNAPKokkos(class LAMMPS *);
   ~PairSNAPKokkos();
-  
+
   void coeff(int, char**);
   void init_style();
   double init_one(int, int);
@@ -53,11 +56,17 @@ public:
 
   template<int NEIGHFLAG, int EVFLAG>
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagPairSNAP<NEIGHFLAG,EVFLAG>,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAP<NEIGHFLAG,EVFLAG> >::member_type& team) const;
+  void operator() (TagPairSNAPCompute<NEIGHFLAG,EVFLAG>,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPCompute<NEIGHFLAG,EVFLAG> >::member_type& team) const;
 
   template<int NEIGHFLAG, int EVFLAG>
   KOKKOS_INLINE_FUNCTION
-  void operator() (TagPairSNAP<NEIGHFLAG,EVFLAG>,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAP<NEIGHFLAG,EVFLAG> >::member_type& team, EV_FLOAT&) const;
+  void operator() (TagPairSNAPCompute<NEIGHFLAG,EVFLAG>,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPCompute<NEIGHFLAG,EVFLAG> >::member_type& team, EV_FLOAT&) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPBeta,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPBeta>::member_type& team) const;
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (TagPairSNAPBispectrum,const typename Kokkos::TeamPolicy<DeviceType, TagPairSNAPBispectrum>::member_type& team) const;
 
   template<int NEIGHFLAG>
   KOKKOS_INLINE_FUNCTION
@@ -82,10 +91,14 @@ protected:
   SNAKokkos<DeviceType> snaKK;
 
   // How much parallelism to use within an interaction
-  int vector_length;
+  int vector_length,team_size;
+  int team_scratch_size;
+  int thread_scratch_size;
 
   int eflag,vflag;
 
+  void compute_beta();
+  void compute_bispectrum();
   void allocate();
   //void read_files(char *, char *);
   /*template<class DeviceType>
@@ -117,7 +130,9 @@ inline double dist2(double* x,double* y);
   Kokkos::View<F_FLOAT*, DeviceType> d_radelem;              // element radii
   Kokkos::View<F_FLOAT*, DeviceType> d_wjelem;               // elements weights
   Kokkos::View<F_FLOAT**, Kokkos::LayoutRight, DeviceType> d_coeffelem;           // element bispectrum coefficients
-  Kokkos::View<T_INT*, DeviceType> d_map;                     // mapping from atom types to elements
+  Kokkos::View<T_INT*, DeviceType> d_map;                    // mapping from atom types to elements
+  Kokkos::View<F_FLOAT**, DeviceType> d_beta;                // betas for all atoms in list
+  Kokkos::View<F_FLOAT**, DeviceType> d_bispectrum;          // bispectrum components for all atoms in list
 
   typedef Kokkos::DualView<F_FLOAT**, DeviceType> tdual_fparams;
   tdual_fparams k_cutsq;
@@ -128,6 +143,12 @@ inline double dist2(double* x,double* y);
   typename AT::t_x_array_randomread x;
   typename AT::t_f_array f;
   typename AT::t_int_1d_randomread type;
+
+  int need_dup;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[3], typename DAT::t_f_array::array_layout,DeviceType,Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterDuplicated> dup_f;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[6], typename DAT::t_virial_array::array_layout,DeviceType,Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterDuplicated> dup_vatom;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[3], typename DAT::t_f_array::array_layout,DeviceType,Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterNonDuplicated> ndup_f;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[6], typename DAT::t_virial_array::array_layout,DeviceType,Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterNonDuplicated> ndup_vatom;
 
   friend void pair_virial_fdotr_compute<PairSNAPKokkos>(PairSNAPKokkos*);
 

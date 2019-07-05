@@ -11,7 +11,7 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#include <stdlib.h>
+#include <cstdlib>
 #include "atom_vec_charge_kokkos.h"
 #include "atom_kokkos.h"
 #include "comm_kokkos.h"
@@ -24,7 +24,7 @@
 
 using namespace LAMMPS_NS;
 
-#define DELTA 10000
+#define DELTA 10
 
 /* ---------------------------------------------------------------------- */
 
@@ -58,14 +58,15 @@ AtomVecChargeKokkos::AtomVecChargeKokkos(LAMMPS *lmp) : AtomVecKokkos(lmp)
 
 void AtomVecChargeKokkos::grow(int n)
 {
-  if (n == 0) nmax += DELTA;
+  int step = MAX(DELTA,nmax*0.01);
+  if (n == 0) nmax += step;
   else nmax = n;
   atomKK->nmax = nmax;
   if (nmax < 0 || nmax > MAXSMALLINT)
     error->one(FLERR,"Per-processor system is too big");
 
-  sync(Device,ALL_MASK);
-  modified(Device,ALL_MASK);
+  atomKK->sync(Device,ALL_MASK);
+  atomKK->modified(Device,ALL_MASK);
 
   memoryKK->grow_kokkos(atomKK->k_tag,atomKK->tag,nmax,"atom:tag");
   memoryKK->grow_kokkos(atomKK->k_type,atomKK->type,nmax,"atom:type");
@@ -79,7 +80,7 @@ void AtomVecChargeKokkos::grow(int n)
   memoryKK->grow_kokkos(atomKK->k_q,atomKK->q,nmax,"atom:q");
 
   grow_reset();
-  sync(Host,ALL_MASK);
+  atomKK->sync(Host,ALL_MASK);
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -169,7 +170,7 @@ struct AtomVecChargeKokkos_PackComm {
       _x(x.view<DeviceType>()),_list(list.view<DeviceType>()),_iswap(iswap),
       _xprd(xprd),_yprd(yprd),_zprd(zprd),
       _xy(xy),_xz(xz),_yz(yz) {
-        const size_t maxsend = (buf.view<DeviceType>().dimension_0()*buf.view<DeviceType>().dimension_1())/3;
+        const size_t maxsend = (buf.view<DeviceType>().extent(0)*buf.view<DeviceType>().extent(1))/3;
         const size_t elements = 3;
         buffer_view<DeviceType>(_buf,buf,maxsend,elements);
         _pbc[0] = pbc[0]; _pbc[1] = pbc[1]; _pbc[2] = pbc[2];
@@ -494,7 +495,7 @@ void AtomVecChargeKokkos::unpack_border_kokkos(const int &n, const int &first,
       f(buf.view<LMPDeviceType>(),d_x,d_tag,d_type,d_mask,d_q,first);
     Kokkos::parallel_for(n,f);
   }
-  modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|Q_MASK);
+  atomKK->modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|Q_MASK);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -510,7 +511,7 @@ void AtomVecChargeKokkos::unpack_border(int n, int first, double *buf)
     if (i == nmax) {
       grow(0);
     }
-    modified(Host,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|Q_MASK);
+    atomKK->modified(Host,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|Q_MASK);
     h_x(i,0) = buf[m++];
     h_x(i,1) = buf[m++];
     h_x(i,2) = buf[m++];
@@ -536,7 +537,7 @@ void AtomVecChargeKokkos::unpack_border_vel(int n, int first, double *buf)
   last = first + n;
   for (i = first; i < last; i++) {
     if (i == nmax) grow(0);
-    modified(Host,X_MASK|V_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|Q_MASK);
+    atomKK->modified(Host,X_MASK|V_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|Q_MASK);
     h_x(i,0) = buf[m++];
     h_x(i,1) = buf[m++];
     h_x(i,2) = buf[m++];
@@ -620,8 +621,8 @@ struct AtomVecChargeKokkos_PackExchangeFunctor {
     _nlocal(nlocal),_dim(dim),
     _lo(lo),_hi(hi){
     const size_t elements = 12;
-    const int maxsendlist = (buf.template view<DeviceType>().dimension_0()*
-                             buf.template view<DeviceType>().dimension_1())/elements;
+    const int maxsendlist = (buf.template view<DeviceType>().extent(0)*
+                             buf.template view<DeviceType>().extent(1))/elements;
 
     buffer_view<DeviceType>(_buf,buf,maxsendlist,elements);
   }
@@ -667,9 +668,9 @@ int AtomVecChargeKokkos::pack_exchange_kokkos(const int &nsend,DAT::tdual_xfloat
                                               ExecutionSpace space,int dim,
                                               X_FLOAT lo,X_FLOAT hi )
 {
-  if(nsend > (int) (k_buf.view<LMPHostType>().dimension_0()*k_buf.view<LMPHostType>().dimension_1())/12) {
-    int newsize = nsend*12/k_buf.view<LMPHostType>().dimension_1()+1;
-    k_buf.resize(newsize,k_buf.view<LMPHostType>().dimension_1());
+  if(nsend > (int) (k_buf.view<LMPHostType>().extent(0)*k_buf.view<LMPHostType>().extent(1))/12) {
+    int newsize = nsend*12/k_buf.view<LMPHostType>().extent(1)+1;
+    k_buf.resize(newsize,k_buf.view<LMPHostType>().extent(1));
   }
   if(space == Host) {
     AtomVecChargeKokkos_PackExchangeFunctor<LMPHostType>
@@ -742,7 +743,7 @@ struct AtomVecChargeKokkos_UnpackExchangeFunctor {
     _nlocal(nlocal.template view<DeviceType>()),_dim(dim),
     _lo(lo),_hi(hi){
     const size_t elements = 12;
-    const int maxsendlist = (buf.template view<DeviceType>().dimension_0()*buf.template view<DeviceType>().dimension_1())/elements;
+    const int maxsendlist = (buf.template view<DeviceType>().extent(0)*buf.template view<DeviceType>().extent(1))/elements;
 
     buffer_view<DeviceType>(_buf,buf,maxsendlist,elements);
   }
@@ -797,7 +798,7 @@ int AtomVecChargeKokkos::unpack_exchange(double *buf)
 {
   int nlocal = atom->nlocal;
   if (nlocal == nmax) grow(0);
-  modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
+  atomKK->modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
            MASK_MASK | IMAGE_MASK | Q_MASK);
 
   int m = 1;
@@ -850,7 +851,7 @@ int AtomVecChargeKokkos::size_restart()
 
 int AtomVecChargeKokkos::pack_restart(int i, double *buf)
 {
-  sync(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
+  atomKK->sync(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
             MASK_MASK | IMAGE_MASK | Q_MASK);
 
   int m = 1;
@@ -888,7 +889,7 @@ int AtomVecChargeKokkos::unpack_restart(double *buf)
       memory->grow(atom->extra,nmax,atom->nextra_store,"atom:extra");
   }
 
-  modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
+  atomKK->modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
            MASK_MASK | IMAGE_MASK | Q_MASK);
 
   int m = 1;

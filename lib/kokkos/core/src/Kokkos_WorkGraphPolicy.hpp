@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -55,15 +55,15 @@ class WorkGraphExec;
 namespace Kokkos {
 
 template< class ... Properties >
-class WorkGraphPolicy
+class WorkGraphPolicy: public Kokkos::Impl::PolicyTraits<Properties ... >
 {
 public:
 
+  using execution_policy = WorkGraphPolicy<Properties ... >;
   using self_type       = WorkGraphPolicy<Properties ... >;
   using traits          = Kokkos::Impl::PolicyTraits<Properties ... >;
   using index_type      = typename traits::index_type;
   using member_type     = index_type;
-  using work_tag        = typename traits::work_tag;
   using execution_space = typename traits::execution_space;
   using memory_space    = typename execution_space::memory_space;
   using graph_type      = Kokkos::Crs<index_type,execution_space,void,index_type>;
@@ -139,7 +139,7 @@ public:
         if ( w == END_TOKEN ) { return END_TOKEN ; }
 
         if ( ( w != BEGIN_TOKEN ) &&
-             ( w == atomic_compare_exchange(ready_queue+i,w,BEGIN_TOKEN) ) ) {
+             ( w == atomic_compare_exchange(ready_queue+i,w,(std::int32_t)BEGIN_TOKEN) ) ) {
           // Attempt to claim ready work index succeeded,
           // update the hint and return work index
           atomic_increment( begin_hint );
@@ -216,7 +216,7 @@ public:
       using closure_type = Kokkos::Impl::ParallelFor<self_type, policy_type>;
       const closure_type closure(*this, policy_type(0, m_queue.size()));
       closure.execute();
-      execution_space::fence();
+      execution_space().fence();
     }
 
     { // execute-after counts
@@ -224,7 +224,7 @@ public:
       using closure_type = Kokkos::Impl::ParallelFor<self_type, policy_type>;
       const closure_type closure(*this,policy_type(0,m_graph.entries.size()));
       closure.execute();
-      execution_space::fence();
+      execution_space().fence();
     }
 
     { // Scheduling ready tasks
@@ -232,7 +232,7 @@ public:
       using closure_type = Kokkos::Impl::ParallelFor<self_type, policy_type>;
       const closure_type closure(*this,policy_type(0,m_graph.numRows()));
       closure.execute();
-      execution_space::fence();
+      execution_space().fence();
     }
   }
 };
@@ -253,6 +253,10 @@ public:
 
 #ifdef KOKKOS_ENABLE_THREADS
 #include "Threads/Kokkos_Threads_WorkGraphPolicy.hpp"
+#endif
+
+#ifdef KOKKOS_ENABLE_HPX
+#include "HPX/Kokkos_HPX_WorkGraphPolicy.hpp"
 #endif
 
 #endif /* #define KOKKOS_WORKGRAPHPOLICY_HPP */

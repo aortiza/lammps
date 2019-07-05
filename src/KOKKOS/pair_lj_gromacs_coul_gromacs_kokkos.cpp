@@ -15,10 +15,10 @@
    Contributing author: Ray Shan (SNL)
 ------------------------------------------------------------------------- */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include "pair_lj_gromacs_coul_gromacs_kokkos.h"
 #include "kokkos.h"
 #include "atom_kokkos.h"
@@ -103,8 +103,7 @@ void PairLJGromacsCoulGromacsKokkos<DeviceType>::compute(int eflag_in, int vflag
 
   if (neighflag == FULL) no_virial_fdotr_compute = 1;
 
-  if (eflag || vflag) ev_setup(eflag,vflag,0);
-  else evflag = vflag_fdotr = 0;
+  ev_init(eflag,vflag,0);
 
   // reallocate per-atom arrays if necessary
 
@@ -206,8 +205,8 @@ compute_fpair(const F_FLOAT& rsq, const int& i, const int&j,
     const F_FLOAT r = sqrt(rsq);
     const F_FLOAT tlj = r - cut_lj_inner;
     const F_FLOAT fswitch = r*tlj*tlj*
-	    ((STACKPARAMS?m_params[itype][jtype].ljsw1:params(itype,jtype).ljsw1) +
-	     (STACKPARAMS?m_params[itype][jtype].ljsw2:params(itype,jtype).ljsw2)*tlj);
+            ((STACKPARAMS?m_params[itype][jtype].ljsw1:params(itype,jtype).ljsw1) +
+             (STACKPARAMS?m_params[itype][jtype].ljsw2:params(itype,jtype).ljsw2)*tlj);
     forcelj += fswitch;
   }
   return forcelj*r2inv;
@@ -234,8 +233,8 @@ compute_evdwl(const F_FLOAT& rsq, const int& i, const int&j,
     const F_FLOAT r = sqrt(rsq);
     const F_FLOAT tlj = r - cut_lj_inner;
     const F_FLOAT eswitch = tlj*tlj*tlj *
-	    ((STACKPARAMS?m_params[itype][jtype].ljsw3:params(itype,jtype).ljsw3) +
-	     (STACKPARAMS?m_params[itype][jtype].ljsw4:params(itype,jtype).ljsw4)*tlj);
+            ((STACKPARAMS?m_params[itype][jtype].ljsw3:params(itype,jtype).ljsw3) +
+             (STACKPARAMS?m_params[itype][jtype].ljsw4:params(itype,jtype).ljsw4)*tlj);
     englj += eswitch;
   }
   return englj;
@@ -516,7 +515,7 @@ double PairLJGromacsCoulGromacsKokkos<DeviceType>::init_one(int i, int j)
 
 namespace LAMMPS_NS {
 template class PairLJGromacsCoulGromacsKokkos<LMPDeviceType>;
-#ifdef KOKKOS_HAVE_CUDA
+#ifdef KOKKOS_ENABLE_CUDA
 template class PairLJGromacsCoulGromacsKokkos<LMPHostType>;
 #endif
 }

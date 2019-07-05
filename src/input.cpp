@@ -12,11 +12,11 @@
 ------------------------------------------------------------------------- */
 
 #include <mpi.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <errno.h>
-#include <ctype.h>
+#include <cctype>
 #include <unistd.h>
 #include <sys/stat.h>
 #include "input.h"
@@ -50,6 +50,7 @@
 #include "accelerator_kokkos.h"
 #include "error.h"
 #include "memory.h"
+#include "utils.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -84,8 +85,9 @@ Input::Input(LAMMPS *lmp, int argc, char **argv) : Pointers(lmp)
   ifthenelse_flag = 0;
 
   if (me == 0) {
-    nfile = maxfile = 1;
-    infiles = (FILE **) memory->smalloc(sizeof(FILE *),"input:infiles");
+    nfile = 1;
+    maxfile = 16;
+    infiles = new FILE *[maxfile];
     infiles[0] = infile;
   } else infiles = NULL;
 
@@ -137,7 +139,7 @@ Input::~Input()
   memory->sfree(work);
   if (labelstr) delete [] labelstr;
   memory->sfree(arg);
-  memory->sfree(infiles);
+  delete [] infiles;
   delete variable;
 
   delete command_map;
@@ -163,8 +165,8 @@ void Input::file()
       while (1) {
         if (maxline-m < 2) reallocate(line,maxline,0);
 
-	// end of file reached, so break
-	// n == 0 if nothing read, else n = line with str terminator
+        // end of file reached, so break
+        // n == 0 if nothing read, else n = line with str terminator
 
         if (fgets(&line[m],maxline-m,infile) == NULL) {
           if (m) n = strlen(line) + 1;
@@ -172,23 +174,23 @@ void Input::file()
           break;
         }
 
-	// continue if last char read was not a newline
-	// could happen if line is very long
+        // continue if last char read was not a newline
+        // could happen if line is very long
 
         m = strlen(line);
         if (line[m-1] != '\n') continue;
 
-	// continue reading if final printable char is & char
-	// or if odd number of triple quotes
-	// else break with n = line with str terminator
+        // continue reading if final printable char is & char
+        // or if odd number of triple quotes
+        // else break with n = line with str terminator
 
         m--;
         while (m >= 0 && isspace(line[m])) m--;
         if (m < 0 || line[m] != '&') {
-	  if (numtriple(line) % 2) {
-	    m += 2;
-	    continue;
-	  }
+          if (numtriple(line) % 2) {
+            m += 2;
+            continue;
+          }
           line[m+1] = '\0';
           n = m+2;
           break;
@@ -205,17 +207,7 @@ void Input::file()
     MPI_Bcast(&n,1,MPI_INT,0,world);
     if (n == 0) {
       if (label_active) error->all(FLERR,"Label wasn't found in input script");
-      if (me == 0) {
-        if (infile != stdin) {
-          fclose(infile);
-          infile = NULL;
-        }
-        nfile--;
-      }
-      MPI_Bcast(&nfile,1,MPI_INT,0,world);
-      if (nfile == 0) break;
-      if (me == 0) infile = infiles[nfile-1];
-      continue;
+      break;
     }
 
     if (n > maxline) reallocate(line,maxline,n);
@@ -249,8 +241,8 @@ void Input::file()
 }
 
 /* ----------------------------------------------------------------------
-   process all input from filename
-   called from library interface
+   process all input from file at filename
+   mostly called from library interface
 ------------------------------------------------------------------------- */
 
 void Input::file(const char *filename)
@@ -260,21 +252,27 @@ void Input::file(const char *filename)
   // call to file() will close filename and decrement nfile
 
   if (me == 0) {
-    if (nfile > 1)
-      error->one(FLERR,"Invalid use of library file() function");
+    if (nfile == maxfile)
+      error->one(FLERR,"Too many nested levels of input scripts");
 
-    if (infile && infile != stdin) fclose(infile);
     infile = fopen(filename,"r");
     if (infile == NULL) {
       char str[128];
-      sprintf(str,"Cannot open input script %s",filename);
+      snprintf(str,128,"Cannot open input script %s",filename);
       error->one(FLERR,str);
     }
-    infiles[0] = infile;
-    nfile = 1;
+    infiles[nfile++] = infile;
   }
 
+  // process contents of file
+
   file();
+
+  if (me == 0) {
+    fclose(infile);
+    nfile--;
+    infile = infiles[nfile-1];
+  }
 }
 
 /* ----------------------------------------------------------------------
@@ -429,14 +427,14 @@ char *Input::nextword(char *str, char **next)
     start += 3;
     *next = stop+3;
     if (**next && !isspace(**next))
-      error->all(FLERR,"Input line quote not followed by whitespace");
+      error->all(FLERR,"Input line quote not followed by white-space");
   } else if (*start == '"' || *start == '\'') {
     stop = strchr(&start[1],*start);
     if (!stop) error->all(FLERR,"Unbalanced quotes in input line");
     start++;
     *next = stop+1;
     if (**next && !isspace(**next))
-      error->all(FLERR,"Input line quote not followed by whitespace");
+      error->all(FLERR,"Input line quote not followed by white-space");
   } else {
     stop = &start[strcspn(start," \t\n\v\f\r")];
     if (*stop == '\0') *next = stop;
@@ -497,7 +495,7 @@ void Input::substitute(char *&str, char *&str2, int &max, int &max2, int flag)
         beyond = ptr + strlen(var) + 3;
         value = variable->retrieve(var);
 
-      // immediate variable between parenthesis, e.g. $(1/2)
+      // immediate variable between parenthesis, e.g. $(1/3) or $(1/3:%.6g)
 
       } else if (*(ptr+1) == '(') {
         var = ptr+2;
@@ -516,10 +514,25 @@ void Input::substitute(char *&str, char *&str2, int &max, int &max2, int flag)
         if (var[i] == '\0') error->one(FLERR,"Invalid immediate variable");
         var[i] = '\0';
         beyond = ptr + strlen(var) + 3;
-        sprintf(immediate,"%.20g",variable->compute_equal(var));
+
+        // check if an inline format specifier was appended with a colon
+
+        char fmtstr[64] = "%.20g";
+        char *fmtflag;
+        if ((fmtflag=strrchr(var, ':')) && (fmtflag[1]=='%')) {
+          strncpy(fmtstr,&fmtflag[1],sizeof(fmtstr)-1);
+          *fmtflag='\0';
+        }
+
+        // quick check for proper format string
+
+        if (!utils::strmatch(fmtstr,"%[0-9 ]*\\.[0-9]+[efgEFG]"))
+          error->all(FLERR,"Incorrect conversion in format string");
+
+        snprintf(immediate,256,fmtstr,variable->compute_equal(var));
         value = immediate;
 
-        // single character variable name, e.g. $a
+      // single character variable name, e.g. $a
 
       } else {
         var = ptr;
@@ -531,7 +544,7 @@ void Input::substitute(char *&str, char *&str2, int &max, int &max2, int flag)
 
       if (value == NULL) {
         char str[128];
-        sprintf(str,"Substitution for illegal variable %s",var);
+        snprintf(str,128,"Substitution for illegal variable %s",var);
         error->one(FLERR,str);
       }
       // check if storage in str2 needs to be expanded
@@ -559,17 +572,17 @@ void Input::substitute(char *&str, char *&str2, int &max, int &max2, int flag)
 
     if (quoteflag == 0) {
       if (strstr(ptr,"\"\"\"") == ptr) {
-	quoteflag = 3;
-	*ptr2++ = *ptr++;
-	*ptr2++ = *ptr++;
+        quoteflag = 3;
+        *ptr2++ = *ptr++;
+        *ptr2++ = *ptr++;
       }
       else if (*ptr == '"') quoteflag = 2;
       else if (*ptr == '\'') quoteflag = 1;
     } else {
       if (quoteflag == 3 && strstr(ptr,"\"\"\"") == ptr) {
-	quoteflag = 0;
-	*ptr2++ = *ptr++;
-	*ptr2++ = *ptr++;
+        quoteflag = 0;
+        *ptr2++ = *ptr++;
+        *ptr2++ = *ptr++;
       }
       else if (quoteflag == 2 && *ptr == '"') quoteflag = 0;
       else if (quoteflag == 1 && *ptr == '\'') quoteflag = 0;
@@ -626,62 +639,62 @@ int Input::expand_args(int narg, char **arg, int mode, char **&earg)
 
       ptr1 = strchr(&arg[iarg][2],'[');
       if (ptr1) {
-	ptr2 = strchr(ptr1,']');
-	if (ptr2) {
-	  *ptr2 = '\0';
-	  if (strchr(ptr1,'*')) {
-	    if (arg[iarg][0] == 'c') {
-	      *ptr1 = '\0';
-	      icompute = modify->find_compute(&arg[iarg][2]);
-	      *ptr1 = '[';
+        ptr2 = strchr(ptr1,']');
+        if (ptr2) {
+          *ptr2 = '\0';
+          if (strchr(ptr1,'*')) {
+            if (arg[iarg][0] == 'c') {
+              *ptr1 = '\0';
+              icompute = modify->find_compute(&arg[iarg][2]);
+              *ptr1 = '[';
 
               // check for global vector/array, peratom array, local array
 
-	      if (icompute >= 0) {
-		if (mode == 0 && modify->compute[icompute]->vector_flag) {
-		  nmax = modify->compute[icompute]->size_vector;
-		  expandflag = 1;
-		} else if (mode == 1 && modify->compute[icompute]->array_flag) {
-		  nmax = modify->compute[icompute]->size_array_cols;
-		  expandflag = 1;
-                } else if (modify->compute[icompute]->peratom_flag && 
+              if (icompute >= 0) {
+                if (mode == 0 && modify->compute[icompute]->vector_flag) {
+                  nmax = modify->compute[icompute]->size_vector;
+                  expandflag = 1;
+                } else if (mode == 1 && modify->compute[icompute]->array_flag) {
+                  nmax = modify->compute[icompute]->size_array_cols;
+                  expandflag = 1;
+                } else if (modify->compute[icompute]->peratom_flag &&
                            modify->compute[icompute]->size_peratom_cols) {
-		  nmax = modify->compute[icompute]->size_peratom_cols;
-		  expandflag = 1;
-                } else if (modify->compute[icompute]->local_flag && 
+                  nmax = modify->compute[icompute]->size_peratom_cols;
+                  expandflag = 1;
+                } else if (modify->compute[icompute]->local_flag &&
                            modify->compute[icompute]->size_local_cols) {
-		  nmax = modify->compute[icompute]->size_local_cols;
-		  expandflag = 1;
-		}
-	      }	      
-	    } else if (arg[iarg][0] == 'f') {
-	      *ptr1 = '\0';
-	      ifix = modify->find_fix(&arg[iarg][2]);
-	      *ptr1 = '[';
+                  nmax = modify->compute[icompute]->size_local_cols;
+                  expandflag = 1;
+                }
+              }
+            } else if (arg[iarg][0] == 'f') {
+              *ptr1 = '\0';
+              ifix = modify->find_fix(&arg[iarg][2]);
+              *ptr1 = '[';
 
               // check for global vector/array, peratom array, local array
 
-	      if (ifix >= 0) {
-		if (mode == 0 && modify->fix[ifix]->vector_flag) {
-		  nmax = modify->fix[ifix]->size_vector;
-		  expandflag = 1;
-		} else if (mode == 1 && modify->fix[ifix]->array_flag) {
-		  nmax = modify->fix[ifix]->size_array_cols;
-		  expandflag = 1;
-                } else if (modify->fix[ifix]->peratom_flag && 
+              if (ifix >= 0) {
+                if (mode == 0 && modify->fix[ifix]->vector_flag) {
+                  nmax = modify->fix[ifix]->size_vector;
+                  expandflag = 1;
+                } else if (mode == 1 && modify->fix[ifix]->array_flag) {
+                  nmax = modify->fix[ifix]->size_array_cols;
+                  expandflag = 1;
+                } else if (modify->fix[ifix]->peratom_flag &&
                            modify->fix[ifix]->size_peratom_cols) {
-		  nmax = modify->fix[ifix]->size_peratom_cols;
-		  expandflag = 1;
-                } else if (modify->fix[ifix]->local_flag && 
+                  nmax = modify->fix[ifix]->size_peratom_cols;
+                  expandflag = 1;
+                } else if (modify->fix[ifix]->local_flag &&
                            modify->fix[ifix]->size_local_cols) {
-		  nmax = modify->fix[ifix]->size_local_cols;
-		  expandflag = 1;
-		}
-	      }
-	    }
-	  }
-	  *ptr2 = ']';
-	}
+                  nmax = modify->fix[ifix]->size_local_cols;
+                  expandflag = 1;
+                }
+              }
+            }
+          }
+          *ptr2 = ']';
+        }
       }
     }
 
@@ -690,23 +703,23 @@ int Input::expand_args(int narg, char **arg, int mode, char **&earg)
       force->bounds(FLERR,ptr1+1,nmax,nlo,nhi);
       *ptr2 = ']';
       if (newarg+nhi-nlo+1 > maxarg) {
-	maxarg += nhi-nlo+1;
-	earg = (char **) 
+        maxarg += nhi-nlo+1;
+        earg = (char **)
           memory->srealloc(earg,maxarg*sizeof(char *),"input:earg");
       }
       for (index = nlo; index <= nhi; index++) {
-	n = strlen(arg[iarg]) + 16;   // 16 = space for large inserted integer
-	str = earg[newarg] = new char[n];
-	strncpy(str,arg[iarg],ptr1+1-arg[iarg]);
-	sprintf(&str[ptr1+1-arg[iarg]],"%d",index);
-	strcat(str,ptr2);
+        n = strlen(arg[iarg]) + 16;   // 16 = space for large inserted integer
+        str = earg[newarg] = new char[n];
+        strncpy(str,arg[iarg],ptr1+1-arg[iarg]);
+        sprintf(&str[ptr1+1-arg[iarg]],"%d",index);
+        strcat(str,ptr2);
         newarg++;
       }
 
     } else {
       if (newarg == maxarg) {
-	maxarg++;
-	earg = (char **) 
+        maxarg++;
+        earg = (char **)
           memory->srealloc(earg,maxarg*sizeof(char *),"input:earg");
       }
       n = strlen(arg[iarg]) + 1;
@@ -1029,18 +1042,26 @@ void Input::include()
     error->all(FLERR,"Cannot use include command within an if command");
 
   if (me == 0) {
-    if (nfile == maxfile) {
-      maxfile++;
-      infiles = (FILE **)
-        memory->srealloc(infiles,maxfile*sizeof(FILE *),"input:infiles");
-    }
+    if (nfile == maxfile)
+      error->one(FLERR,"Too many nested levels of input scripts");
+
     infile = fopen(arg[0],"r");
     if (infile == NULL) {
       char str[128];
-      sprintf(str,"Cannot open input script %s",arg[0]);
+      snprintf(str,128,"Cannot open input script %s",arg[0]);
       error->one(FLERR,str);
     }
     infiles[nfile++] = infile;
+  }
+
+  // process contents of file
+
+  file();
+
+  if (me == 0) {
+    fclose(infile);
+    nfile--;
+    infile = infiles[nfile-1];
   }
 }
 
@@ -1062,7 +1083,7 @@ void Input::jump()
       infile = fopen(arg[0],"r");
       if (infile == NULL) {
         char str[128];
-        sprintf(str,"Cannot open input script %s",arg[0]);
+        snprintf(str,128,"Cannot open input script %s",arg[0]);
         error->one(FLERR,str);
       }
       infiles[nfile-1] = infile;
@@ -1107,7 +1128,7 @@ void Input::log()
 
       if (logfile == NULL) {
         char str[128];
-        sprintf(str,"Cannot open logfile %s",arg[0]);
+        snprintf(str,128,"Cannot open logfile %s",arg[0]);
         error->one(FLERR,str);
       }
     }
@@ -1128,7 +1149,7 @@ void Input::partition()
 {
   if (narg < 3) error->all(FLERR,"Illegal partition command");
 
-  int yesflag;
+  int yesflag = 0;
   if (strcmp(arg[0],"yes") == 0) yesflag = 1;
   else if (strcmp(arg[0],"no") == 0) yesflag = 0;
   else error->all(FLERR,"Illegal partition command");
@@ -1186,7 +1207,7 @@ void Input::print()
         else fp = fopen(arg[iarg+1],"a");
         if (fp == NULL) {
           char str[128];
-          sprintf(str,"Cannot open print file %s",arg[iarg+1]);
+          snprintf(str,128,"Cannot open print file %s",arg[iarg+1]);
           error->one(FLERR,str);
         }
       }
@@ -1623,7 +1644,8 @@ void Input::kspace_modify()
 
 void Input::kspace_style()
 {
-  force->create_kspace(narg,arg,1);
+  force->create_kspace(arg[0],1);
+  if (force->kspace) force->kspace->settings(narg-1,&arg[1]);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1801,11 +1823,11 @@ void Input::pair_style()
     if (!match && lmp->suffix_enable) {
       char estyle[256];
       if (lmp->suffix) {
-        sprintf(estyle,"%s/%s",arg[0],lmp->suffix);
+        snprintf(estyle,256,"%s/%s",arg[0],lmp->suffix);
         if (strcmp(estyle,force->pair_style) == 0) match = 1;
       }
       if (lmp->suffix2) {
-        sprintf(estyle,"%s/%s",arg[0],lmp->suffix2);
+        snprintf(estyle,256,"%s/%s",arg[0],lmp->suffix2);
         if (strcmp(estyle,force->pair_style) == 0) match = 1;
       }
     }

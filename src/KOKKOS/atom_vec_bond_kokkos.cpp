@@ -11,7 +11,7 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#include <stdlib.h>
+#include <cstdlib>
 #include "atom_vec_bond_kokkos.h"
 #include "atom_kokkos.h"
 #include "comm_kokkos.h"
@@ -24,7 +24,7 @@
 
 using namespace LAMMPS_NS;
 
-#define DELTA 10000
+#define DELTA 10
 
 /* ---------------------------------------------------------------------- */
 
@@ -43,6 +43,8 @@ AtomVecBondKokkos::AtomVecBondKokkos(LAMMPS *lmp) : AtomVecKokkos(lmp)
   size_data_vel = 4;
   xcol_data = 4;
 
+  atom->molecule_flag = 1;
+
   k_count = DAT::tdual_int_1d("atom::k_count",1);
   atomKK = (AtomKokkos *) atom;
   commKK = (CommKokkos *) comm;
@@ -56,14 +58,15 @@ AtomVecBondKokkos::AtomVecBondKokkos(LAMMPS *lmp) : AtomVecKokkos(lmp)
 
 void AtomVecBondKokkos::grow(int n)
 {
-  if (n == 0) nmax += DELTA;
+  int step = MAX(DELTA,nmax*0.01);
+  if (n == 0) nmax += step;
   else nmax = n;
   atomKK->nmax = nmax;
   if (nmax < 0 || nmax > MAXSMALLINT)
     error->one(FLERR,"Per-processor system is too big");
 
-  sync(Device,ALL_MASK);
-  modified(Device,ALL_MASK);
+  atomKK->sync(Device,ALL_MASK);
+  atomKK->modified(Device,ALL_MASK);
 
   memoryKK->grow_kokkos(atomKK->k_tag,atomKK->tag,nmax,"atom:tag");
   memoryKK->grow_kokkos(atomKK->k_type,atomKK->type,nmax,"atom:type");
@@ -82,7 +85,7 @@ void AtomVecBondKokkos::grow(int n)
   memoryKK->grow_kokkos(atomKK->k_bond_atom,atomKK->bond_atom,nmax,atomKK->bond_per_atom,"atom:bond_atom");
 
   grow_reset();
-  sync(Host,ALL_MASK);
+  atomKK->sync(Host,ALL_MASK);
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atomKK->nextra_grow; iextra++)
@@ -466,9 +469,9 @@ struct AtomVecBondKokkos_UnpackBorder {
 void AtomVecBondKokkos::unpack_border_kokkos(const int &n, const int &first,
                                              const DAT::tdual_xfloat_2d &buf,
                                              ExecutionSpace space) {
-  modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
+  atomKK->modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
   while (first+n >= nmax) grow(0);
-  modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
+  atomKK->modified(space,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
   if(space==Host) {
     struct AtomVecBondKokkos_UnpackBorder<LMPHostType>
       f(buf.view<LMPHostType>(),h_x,h_tag,h_type,h_mask,h_molecule,first);
@@ -490,7 +493,7 @@ void AtomVecBondKokkos::unpack_border(int n, int first, double *buf)
   last = first + n;
   for (i = first; i < last; i++) {
     if (i == nmax) grow(0);
-    modified(Host,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
+    atomKK->modified(Host,X_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
     h_x(i,0) = buf[m++];
     h_x(i,1) = buf[m++];
     h_x(i,2) = buf[m++];
@@ -516,7 +519,7 @@ void AtomVecBondKokkos::unpack_border_vel(int n, int first, double *buf)
   last = first + n;
   for (i = first; i < last; i++) {
     if (i == nmax) grow(0);
-    modified(Host,X_MASK|V_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
+    atomKK->modified(Host,X_MASK|V_MASK|TAG_MASK|TYPE_MASK|MASK_MASK|MOLECULE_MASK);
     h_x(i,0) = buf[m++];
     h_x(i,1) = buf[m++];
     h_x(i,2) = buf[m++];
@@ -598,24 +601,24 @@ struct AtomVecBondKokkos_PackExchangeFunctor {
     _type(atom->k_type.view<DeviceType>()),
     _mask(atom->k_mask.view<DeviceType>()),
     _image(atom->k_image.view<DeviceType>()),
-		_molecule(atom->k_molecule.view<DeviceType>()),
-		_nspecial(atom->k_nspecial.view<DeviceType>()),
-		_special(atom->k_special.view<DeviceType>()),
-		_num_bond(atom->k_num_bond.view<DeviceType>()),
-		_bond_type(atom->k_bond_type.view<DeviceType>()),
-		_bond_atom(atom->k_bond_atom.view<DeviceType>()),
+                _molecule(atom->k_molecule.view<DeviceType>()),
+                _nspecial(atom->k_nspecial.view<DeviceType>()),
+                _special(atom->k_special.view<DeviceType>()),
+                _num_bond(atom->k_num_bond.view<DeviceType>()),
+                _bond_type(atom->k_bond_type.view<DeviceType>()),
+                _bond_atom(atom->k_bond_atom.view<DeviceType>()),
     _xw(atom->k_x.view<DeviceType>()),
     _vw(atom->k_v.view<DeviceType>()),
     _tagw(atom->k_tag.view<DeviceType>()),
     _typew(atom->k_type.view<DeviceType>()),
     _maskw(atom->k_mask.view<DeviceType>()),
     _imagew(atom->k_image.view<DeviceType>()),
-		_moleculew(atom->k_molecule.view<DeviceType>()),
-		_nspecialw(atom->k_nspecial.view<DeviceType>()),
-		_specialw(atom->k_special.view<DeviceType>()),
-		_num_bondw(atom->k_num_bond.view<DeviceType>()),
-		_bond_typew(atom->k_bond_type.view<DeviceType>()),
-		_bond_atomw(atom->k_bond_atom.view<DeviceType>()),
+                _moleculew(atom->k_molecule.view<DeviceType>()),
+                _nspecialw(atom->k_nspecial.view<DeviceType>()),
+                _specialw(atom->k_special.view<DeviceType>()),
+                _num_bondw(atom->k_num_bond.view<DeviceType>()),
+                _bond_typew(atom->k_bond_type.view<DeviceType>()),
+                _bond_atomw(atom->k_bond_atom.view<DeviceType>()),
     _sendlist(sendlist.template view<DeviceType>()),
     _copylist(copylist.template view<DeviceType>()),
     _nlocal(nlocal),_dim(dim),
@@ -624,8 +627,8 @@ struct AtomVecBondKokkos_PackExchangeFunctor {
     // maxspecial special, 1 num_bond, bond_per_atom bond_type, bond_per_atom bond_atom,
     // 1 to store buffer lenght
     elements = 16+atom->maxspecial+atom->bond_per_atom+atom->bond_per_atom;
-    const int maxsendlist = (buf.template view<DeviceType>().dimension_0()*
-			     buf.template view<DeviceType>().dimension_1())/elements;
+    const int maxsendlist = (buf.template view<DeviceType>().extent(0)*
+                             buf.template view<DeviceType>().extent(1))/elements;
     buffer_view<DeviceType>(_buf,buf,maxsendlist,elements);
   }
 
@@ -694,10 +697,10 @@ int AtomVecBondKokkos::pack_exchange_kokkos(const int &nsend,DAT::tdual_xfloat_2
                                             X_FLOAT hi )
 {
   const int elements = 16+atomKK->maxspecial+atomKK->bond_per_atom+atomKK->bond_per_atom;
-  if(nsend > (int) (k_buf.view<LMPHostType>().dimension_0()*
-	      k_buf.view<LMPHostType>().dimension_1())/elements) {
-    int newsize = nsend*elements/k_buf.view<LMPHostType>().dimension_1()+1;
-    k_buf.resize(newsize,k_buf.view<LMPHostType>().dimension_1());
+  if(nsend > (int) (k_buf.view<LMPHostType>().extent(0)*
+              k_buf.view<LMPHostType>().extent(1))/elements) {
+    int newsize = nsend*elements/k_buf.view<LMPHostType>().extent(1)+1;
+    k_buf.resize(newsize,k_buf.view<LMPHostType>().extent(1));
   }
   if(space == Host) {
     AtomVecBondKokkos_PackExchangeFunctor<LMPHostType>
@@ -785,17 +788,17 @@ struct AtomVecBondKokkos_UnpackExchangeFunctor {
     _type(atom->k_type.view<DeviceType>()),
     _mask(atom->k_mask.view<DeviceType>()),
     _image(atom->k_image.view<DeviceType>()),
-		_molecule(atom->k_molecule.view<DeviceType>()),
-		_nspecial(atom->k_nspecial.view<DeviceType>()),
-		_special(atom->k_special.view<DeviceType>()),
-		_num_bond(atom->k_num_bond.view<DeviceType>()),
-		_bond_type(atom->k_bond_type.view<DeviceType>()),
-		_bond_atom(atom->k_bond_atom.view<DeviceType>()),
+                _molecule(atom->k_molecule.view<DeviceType>()),
+                _nspecial(atom->k_nspecial.view<DeviceType>()),
+                _special(atom->k_special.view<DeviceType>()),
+                _num_bond(atom->k_num_bond.view<DeviceType>()),
+                _bond_type(atom->k_bond_type.view<DeviceType>()),
+                _bond_atom(atom->k_bond_atom.view<DeviceType>()),
     _nlocal(nlocal.template view<DeviceType>()),_dim(dim),
     _lo(lo),_hi(hi){
     elements = 16+atom->maxspecial+atom->bond_per_atom+atom->bond_per_atom;
-    const int maxsendlist = (buf.template view<DeviceType>().dimension_0()*
-			     buf.template view<DeviceType>().dimension_1())/elements;
+    const int maxsendlist = (buf.template view<DeviceType>().extent(0)*
+                             buf.template view<DeviceType>().extent(1))/elements;
     buffer_view<DeviceType>(_buf,buf,maxsendlist,elements);
   }
 
@@ -864,7 +867,7 @@ int AtomVecBondKokkos::unpack_exchange(double *buf)
 {
   int nlocal = atom->nlocal;
   if (nlocal == nmax) grow(0);
-  modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
+  atomKK->modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
            MASK_MASK | IMAGE_MASK | MOLECULE_MASK | BOND_MASK | SPECIAL_MASK);
 
   int k;
@@ -932,7 +935,7 @@ int AtomVecBondKokkos::size_restart()
 
 int AtomVecBondKokkos::pack_restart(int i, double *buf)
 {
-  sync(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
+  atomKK->sync(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
             MASK_MASK | IMAGE_MASK | MOLECULE_MASK | BOND_MASK | SPECIAL_MASK);
   int m = 1;
   buf[m++] = h_x(i,0);
@@ -976,7 +979,7 @@ int AtomVecBondKokkos::unpack_restart(double *buf)
     if (atom->nextra_store)
       memory->grow(atom->extra,nmax,atom->nextra_store,"atom:extra");
   }
-  modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
+  atomKK->modified(Host,X_MASK | V_MASK | TAG_MASK | TYPE_MASK |
            MASK_MASK | IMAGE_MASK | MOLECULE_MASK | BOND_MASK | SPECIAL_MASK);
   int m = 1;
   h_x(nlocal,0) = buf[m++];
@@ -1127,7 +1130,7 @@ void AtomVecBondKokkos::write_data(FILE *fp, int n, double **buf)
   for (int i = 0; i < n; i++)
     fprintf(fp,"%d %d %d %-1.16e %-1.16e %-1.16e %d %d %d\n",
             (int) buf[i][0],(int) buf[i][1], (int) buf[i][2],
-	    buf[i][3],buf[i][4],buf[i][5],
+            buf[i][3],buf[i][4],buf[i][5],
             (int) buf[i][6],(int) buf[i][7],(int) buf[i][8]);
 }
 

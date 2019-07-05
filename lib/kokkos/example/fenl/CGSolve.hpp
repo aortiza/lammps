@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 // 
 // ************************************************************************
 //@HEADER
@@ -59,7 +59,11 @@ namespace Example {
 
 template< typename ValueType , class Space >
 struct CrsMatrix {
-  typedef Kokkos::StaticCrsGraph< unsigned , Space , void , unsigned >  StaticCrsGraphType ;
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+  typedef Kokkos::StaticCrsGraph< unsigned , Space , void , unsigned , void >  StaticCrsGraphType ;
+#else
+  typedef Kokkos::StaticCrsGraph< unsigned , Space , void , void , unsigned >  StaticCrsGraphType ;
+#endif
   typedef View< ValueType * , Space > coeff_type ;
 
   StaticCrsGraphType  graph ;
@@ -69,7 +73,7 @@ struct CrsMatrix {
 
   CrsMatrix( const StaticCrsGraphType & arg_graph )
     : graph( arg_graph )
-    , coeff( "crs_matrix_coeff" , arg_graph.entries.dimension_0() )
+    , coeff( "crs_matrix_coeff" , arg_graph.entries.extent(0) )
     {}
 };
 
@@ -255,7 +259,7 @@ void cgsolve( const ImportType & import
     timer.reset();
     /* import p    */  import( pAll );
     /* Ap = A * p  */  multiply( count_owned , Ap , A , pAll );
-    Space::fence();
+    Space().fence();
     matvec_time += timer.seconds();
 
     const double pAp_dot = Kokkos::Example::all_reduce( dot( count_owned , p , Ap ) , import.comm );
@@ -274,7 +278,7 @@ void cgsolve( const ImportType & import
     ++iteration ;
   }
 
-  Space::fence();
+  Space().fence();
   iter_time = wall_clock.seconds();
 
   if ( 0 != result ) {

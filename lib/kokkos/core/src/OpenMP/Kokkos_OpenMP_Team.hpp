@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -74,25 +74,95 @@ public:
     return *this;
   }
 
+  template<class ExecSpace, class ... OtherProperties >
+  friend class TeamPolicyInternal;
+
+  template< class ... OtherProperties >
+  TeamPolicyInternal(const TeamPolicyInternal<Kokkos::OpenMP,OtherProperties...>& p) {
+    m_league_size = p.m_league_size;
+    m_team_size = p.m_team_size;
+    m_team_alloc = p.m_team_alloc;
+    m_team_iter = p.m_team_iter;
+    m_team_scratch_size[0] = p.m_team_scratch_size[0];
+    m_thread_scratch_size[0] = p.m_thread_scratch_size[0];
+    m_team_scratch_size[1] = p.m_team_scratch_size[1];
+    m_thread_scratch_size[1] = p.m_thread_scratch_size[1];
+    m_chunk_size = p.m_chunk_size;
+  }
   //----------------------------------------
 
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
   template< class FunctorType >
   inline static
   int team_size_max( const FunctorType & ) {
-      int pool_size = traits::execution_space::thread_pool_size(1);
-      int max_host_team_size =  Impl::HostThreadTeamData::max_team_members;
-      return pool_size<max_host_team_size?pool_size:max_host_team_size;
-    }
+    int pool_size = traits::execution_space::thread_pool_size(1);
+    int max_host_team_size =  Impl::HostThreadTeamData::max_team_members;
+    return pool_size<max_host_team_size?pool_size:max_host_team_size;
+  }
 
   template< class FunctorType >
   inline static
   int team_size_recommended( const FunctorType & )
-    { return traits::execution_space::thread_pool_size(2); }
+  {
+    return traits::execution_space::thread_pool_size(2);
+  }
 
   template< class FunctorType >
   inline static
   int team_size_recommended( const FunctorType &, const int& )
-    { return traits::execution_space::thread_pool_size(2); }
+  {
+    return traits::execution_space::thread_pool_size(2);
+  }
+#endif
+
+  template<class FunctorType>
+  int team_size_max( const FunctorType&, const ParallelForTag& ) const {
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+    int pool_size = traits::execution_space::thread_pool_size(1);
+#else
+    int pool_size = traits::execution_space::impl_thread_pool_size(1);
+#endif
+    int max_host_team_size =  Impl::HostThreadTeamData::max_team_members;
+    return pool_size<max_host_team_size?pool_size:max_host_team_size;
+  }
+  template<class FunctorType>
+  int team_size_max( const FunctorType&, const ParallelReduceTag& ) const {
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+    int pool_size = traits::execution_space::thread_pool_size(1);
+#else
+    int pool_size = traits::execution_space::impl_thread_pool_size(1);
+#endif
+    int max_host_team_size =  Impl::HostThreadTeamData::max_team_members;
+    return pool_size<max_host_team_size?pool_size:max_host_team_size;
+  }
+  template<class FunctorType>
+  int team_size_recommended( const FunctorType&, const ParallelForTag& ) const {
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+    return traits::execution_space::thread_pool_size(2);
+#else
+    return traits::execution_space::impl_thread_pool_size(2);
+#endif
+  }
+  template<class FunctorType>
+  int team_size_recommended( const FunctorType&, const ParallelReduceTag& ) const {
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+    return traits::execution_space::thread_pool_size(2);
+#else
+    return traits::execution_space::impl_thread_pool_size(2);
+#endif
+  }
+
+
+  inline static
+  int vector_length_max()
+    { return 1024; } // Use arbitrary large number, is meant as a vectorizable length
+
+  inline static
+  int scratch_size_max(int level)
+    { return (level==0?
+        1024*32: // Roughly L1 size
+        20*1024*1024); // Limit to keep compatibility with CUDA
+    }
 
   //----------------------------------------
 
@@ -111,13 +181,21 @@ private:
   inline void init( const int league_size_request
                   , const int team_size_request )
     {
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
       const int pool_size  = traits::execution_space::thread_pool_size(0);
-      const int max_host_team_size =  Impl::HostThreadTeamData::max_team_members;
-      const int team_max   = pool_size<max_host_team_size?pool_size:max_host_team_size;
       const int team_grain = traits::execution_space::thread_pool_size(2);
+#else
+      const int pool_size  = traits::execution_space::impl_thread_pool_size(0);
+      const int team_grain = traits::execution_space::impl_thread_pool_size(2);
+#endif
+      const int max_host_team_size =  Impl::HostThreadTeamData::max_team_members;
+      const int team_max   = ((pool_size < max_host_team_size) ? pool_size : max_host_team_size);
 
       m_league_size = league_size_request ;
 
+      #ifndef KOKKOS_ENABLE_DEPRECATED_CODE
+      if(team_size_request > team_max) Kokkos::abort("Kokkos::abort: Requested Team Size is too large!");
+      #endif
       m_team_size = team_size_request < team_max ?
                     team_size_request : team_max ;
 
@@ -145,7 +223,7 @@ public:
   }
 
   /** \brief  Specify league size, request team size */
-  TeamPolicyInternal( typename traits::execution_space &
+  TeamPolicyInternal( const typename traits::execution_space &
             , int league_size_request
             , int team_size_request
             , int /* vector_length_request */ = 1 )
@@ -154,14 +232,18 @@ public:
             , m_chunk_size(0)
     { init( league_size_request , team_size_request ); }
 
-  TeamPolicyInternal( typename traits::execution_space &
+  TeamPolicyInternal( const typename traits::execution_space &
             , int league_size_request
             , const Kokkos::AUTO_t & /* team_size_request */
             , int /* vector_length_request */ = 1)
             : m_team_scratch_size { 0 , 0 }
             , m_thread_scratch_size { 0 , 0 }
             , m_chunk_size(0)
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
     { init( league_size_request , traits::execution_space::thread_pool_size(2) ); }
+#else
+    { init( league_size_request , traits::execution_space::impl_thread_pool_size(2) ); }
+#endif
 
   TeamPolicyInternal( int league_size_request
             , int team_size_request
@@ -177,13 +259,22 @@ public:
             : m_team_scratch_size { 0 , 0 }
             , m_thread_scratch_size { 0 , 0 }
             , m_chunk_size(0)
-    { init( league_size_request , traits::execution_space::thread_pool_size(2) ); }
+  {
+    init( league_size_request ,
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+        traits::execution_space::thread_pool_size(2)
+#else
+        traits::execution_space::impl_thread_pool_size(2)
+#endif
+        );
+  }
 
   inline int team_alloc() const { return m_team_alloc ; }
   inline int team_iter()  const { return m_team_iter ; }
 
   inline int chunk_size() const { return m_chunk_size ; }
 
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
   /** \brief set chunk_size to a discrete value*/
   inline TeamPolicyInternal set_chunk_size(typename traits::index_type chunk_size_) const {
     TeamPolicyInternal p = *this;
@@ -195,26 +286,84 @@ public:
     TeamPolicyInternal p = *this;
     p.m_team_scratch_size[level] = per_team.value;
     return p;
-  };
+  }
 
   inline TeamPolicyInternal set_scratch_size(const int& level, const PerThreadValue& per_thread) const {
     TeamPolicyInternal p = *this;
     p.m_thread_scratch_size[level] = per_thread.value;
     return p;
-  };
+  }
 
   inline TeamPolicyInternal set_scratch_size(const int& level, const PerTeamValue& per_team, const PerThreadValue& per_thread) const {
     TeamPolicyInternal p = *this;
     p.m_team_scratch_size[level] = per_team.value;
     p.m_thread_scratch_size[level] = per_thread.value;
     return p;
-  };
+  }
+#else
+  /** \brief set chunk_size to a discrete value*/
+  inline TeamPolicyInternal& set_chunk_size(typename traits::index_type chunk_size_) {
+    m_chunk_size = chunk_size_;
+    return *this;
+  }
+
+  /** \brief set per team scratch size for a specific level of the scratch hierarchy */
+  inline TeamPolicyInternal& set_scratch_size(const int& level, const PerTeamValue& per_team) {
+    m_team_scratch_size[level] = per_team.value;
+    return *this;
+  }
+
+  /** \brief set per thread scratch size for a specific level of the scratch hierarchy */
+  inline TeamPolicyInternal& set_scratch_size(const int& level, const PerThreadValue& per_thread) {
+    m_thread_scratch_size[level] = per_thread.value;
+    return *this;
+  }
+
+  /** \brief set per thread and per team scratch size for a specific level of the scratch hierarchy */
+  inline TeamPolicyInternal& set_scratch_size(const int& level, const PerTeamValue& per_team, const PerThreadValue& per_thread) {
+    m_team_scratch_size[level] = per_team.value;
+    m_thread_scratch_size[level] = per_thread.value;
+    return *this;
+  }
+#endif
+
+protected:
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+  /** \brief set chunk_size to a discrete value*/
+  inline TeamPolicyInternal internal_set_chunk_size(typename traits::index_type chunk_size_) {
+    m_chunk_size = chunk_size_;
+    return *this;
+  }
+
+  /** \brief set per team scratch size for a specific level of the scratch hierarchy */
+  inline TeamPolicyInternal internal_set_scratch_size(const int& level, const PerTeamValue& per_team) {
+    m_team_scratch_size[level] = per_team.value;
+    return *this;
+  }
+
+  /** \brief set per thread scratch size for a specific level of the scratch hierarchy */
+  inline TeamPolicyInternal internal_set_scratch_size(const int& level, const PerThreadValue& per_thread) {
+    m_thread_scratch_size[level] = per_thread.value;
+    return *this;
+  }
+
+  /** \brief set per thread and per team scratch size for a specific level of the scratch hierarchy */
+  inline TeamPolicyInternal internal_set_scratch_size(const int& level, const PerTeamValue& per_team, const PerThreadValue& per_thread) {
+    m_team_scratch_size[level] = per_team.value;
+    m_thread_scratch_size[level] = per_thread.value;
+    return *this;
+  }
+#endif
 
 private:
   /** \brief finalize chunk_size if it was set to AUTO*/
   inline void set_auto_chunk_size() {
 
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
     int concurrency = traits::execution_space::thread_pool_size(0)/m_team_alloc;
+#else
+    int concurrency = traits::execution_space::impl_thread_pool_size(0)/m_team_alloc;
+#endif
     if( concurrency==0 ) concurrency=1;
 
     if(m_chunk_size > 0) {

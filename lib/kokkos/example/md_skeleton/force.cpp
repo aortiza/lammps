@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -178,7 +178,7 @@ double2 force(System &s,int evflag) {
   else
     Kokkos::parallel_reduce(s.nlocal,f,ev);
 
-  execution_space::fence();
+  execution_space().fence();
   return ev;
 }
 

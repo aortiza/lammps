@@ -16,7 +16,8 @@
 #include "lal_device.h"
 #include "lal_precision.h"
 #include <map>
-#include <math.h>
+#include <cmath>
+#include <cstdlib>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -34,8 +35,8 @@ using namespace LAMMPS_AL;
 
 template <class numtyp, class acctyp>
 DeviceT::Device() : _init_count(0), _device_init(false),
-                                  _gpu_mode(GPU_FORCE), _first_device(0),
-                                  _last_device(0), _compiled(false) {
+                    _gpu_mode(GPU_FORCE), _first_device(0),
+                    _last_device(0), _platform_id(-1), _compiled(false) {
 }
 
 template <class numtyp, class acctyp>
@@ -67,6 +68,17 @@ int DeviceT::init_device(MPI_Comm world, MPI_Comm replica, const int first_gpu,
   _particle_split=p_split;
   _cell_size=cell_size;
   _block_pair=block_pair;
+  // support selecting platform though "package device" keyword.
+  // "0:generic" will select platform 0 and tune for generic device
+  // "1:fermi" will select platform 1 and tune for Nvidia Fermi gpu
+  if (ocl_vendor) {
+    char *sep = NULL;
+    if ((sep = strstr(ocl_vendor,":"))) {
+      *sep = '\0';
+      _platform_id = atoi(ocl_vendor);
+      ocl_vendor = sep+1;
+    }
+  }
 
   // Get the rank/size within the world
   MPI_Comm_rank(_comm_world,&_world_me);
@@ -78,9 +90,9 @@ int DeviceT::init_device(MPI_Comm world, MPI_Comm replica, const int first_gpu,
   // Get the names of all nodes
   int name_length;
   char node_name[MPI_MAX_PROCESSOR_NAME];
-  char node_names[MPI_MAX_PROCESSOR_NAME*_world_size];
+  char *node_names = new char[MPI_MAX_PROCESSOR_NAME*_world_size];
   MPI_Get_processor_name(node_name,&name_length);
-  MPI_Allgather(&node_name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,&node_names,
+  MPI_Allgather(&node_name,MPI_MAX_PROCESSOR_NAME,MPI_CHAR,&node_names[0],
                 MPI_MAX_PROCESSOR_NAME,MPI_CHAR,_comm_world);
   std::string node_string=std::string(node_name);
 
@@ -104,6 +116,7 @@ int DeviceT::init_device(MPI_Comm world, MPI_Comm replica, const int first_gpu,
       split_id=split_num;
     split_num++;
   }
+  delete[] node_names;
 
   // Set up a per node communicator and find rank within
   MPI_Comm node_comm;
@@ -118,8 +131,16 @@ int DeviceT::init_device(MPI_Comm world, MPI_Comm replica, const int first_gpu,
 
   // Time on the device only if 1 proc per gpu
   _time_device=true;
+
+#if 0
+  // XXX: the following setting triggers a memory leak with OpenCL and MPI
+  //      setting _time_device=true for all processes doesn't seem to be a
+  //      problem with either (no segfault, no (large) memory leak.
+  //      thus keeping this disabled for now. may need to review later.
+  //      2018-07-23 <akohlmey@gmail.com>
   if (_procs_per_gpu>1)
     _time_device=false;
+#endif
 
   // Set up a per device communicator
   MPI_Comm_split(node_comm,my_gpu,0,&_comm_gpu);
@@ -133,6 +154,9 @@ int DeviceT::init_device(MPI_Comm world, MPI_Comm replica, const int first_gpu,
   if (_procs_per_gpu>1 && gpu->sharing_supported(my_gpu)==false)
     return -7;
   #endif
+
+  if (gpu->set_platform_accelerator(_platform_id)!=UCL_SUCCESS)
+    return -12;
 
   if (gpu->set(my_gpu)!=UCL_SUCCESS)
     return -6;
@@ -190,13 +214,15 @@ int DeviceT::set_ocl_params(char *ocl_vendor) {
     _ocl_vendor_string="-DUSE_OPENCL";
     int token_count=0;
     std::string params[13];
-    char *pch = strtok(ocl_vendor,"\" ");
+    char *pch = strtok(ocl_vendor,",");
+    pch = strtok(NULL,",");
+    if (pch == NULL) return -11;
     while (pch != NULL) {
       if (token_count==13)
         return -11;
       params[token_count]=pch;
       token_count++;
-      pch = strtok(NULL,"\" ");
+      pch = strtok(NULL,",");
     }
     _ocl_vendor_string+=" -DMEM_THREADS="+params[0]+
                         " -DTHREADS_PER_ATOM="+params[1]+
@@ -212,7 +238,7 @@ int DeviceT::set_ocl_params(char *ocl_vendor) {
                         " -DBLOCK_CELL_ID="+params[11]+
                         " -DMAX_BIO_SHARED_TYPES="+params[12];
   }
-  _ocl_compile_string="-cl-fast-relaxed-math -cl-mad-enable "+std::string(OCL_INT_TYPE)+" "+
+  _ocl_compile_string="-cl-std=CL1.2 -cl-fast-relaxed-math -cl-mad-enable "+std::string(OCL_INT_TYPE)+" "+
                       std::string(OCL_PRECISION_COMPILE)+" "+_ocl_vendor_string;
   #endif
   return 0;
@@ -221,11 +247,8 @@ int DeviceT::set_ocl_params(char *ocl_vendor) {
 template <class numtyp, class acctyp>
 int DeviceT::init(Answer<numtyp,acctyp> &ans, const bool charge,
                   const bool rot, const int nlocal,
-                  const int host_nlocal, const int nall,
-                  Neighbor *nbor, const int maxspecial,
-                  const int gpu_host, const int max_nbors,
-                  const double cell_size, const bool pre_cut,
-                  const int threads_per_atom, const bool vel) {
+                  const int nall, const int maxspecial,
+                  const bool vel) {
   if (!_device_init)
     return -1;
   if (sizeof(acctyp)==sizeof(double) && gpu->double_precision()==false)
@@ -276,16 +299,6 @@ int DeviceT::init(Answer<numtyp,acctyp> &ans, const bool charge,
   if (!ans.init(ef_nlocal,charge,rot,*gpu))
     return -3;
 
-  if (!nbor->init(&_neighbor_shared,ef_nlocal,host_nlocal,max_nbors,maxspecial,
-                  *gpu,gpu_nbor,gpu_host,pre_cut, _block_cell_2d,
-                  _block_cell_id, _block_nbor_build, threads_per_atom,
-                  _warp_size, _time_device, compile_string()))
-    return -3;
-  if (_cell_size<0.0)
-    nbor->cell_size(cell_size,cell_size);
-  else
-    nbor->cell_size(_cell_size,cell_size);
-
   _init_count++;
   return 0;
 }
@@ -310,6 +323,39 @@ int DeviceT::init(Answer<numtyp,acctyp> &ans, const int nlocal,
     return -3;
 
   _init_count++;
+  return 0;
+}
+
+template <class numtyp, class acctyp>
+int DeviceT::init_nbor(Neighbor *nbor, const int nlocal,
+                  const int host_nlocal, const int nall,
+                  const int maxspecial, const int gpu_host,
+                  const int max_nbors, const double cell_size,
+                  const bool pre_cut, const int threads_per_atom) {
+  int ef_nlocal=nlocal;
+  if (_particle_split<1.0 && _particle_split>0.0)
+    ef_nlocal=static_cast<int>(_particle_split*nlocal);
+ 
+  int gpu_nbor=0;
+  if (_gpu_mode==Device<numtyp,acctyp>::GPU_NEIGH)
+    gpu_nbor=1;
+  else if (_gpu_mode==Device<numtyp,acctyp>::GPU_HYB_NEIGH)
+    gpu_nbor=2;
+  #ifndef USE_CUDPP
+  if (gpu_nbor==1)
+    gpu_nbor=2;
+  #endif
+
+  if (!nbor->init(&_neighbor_shared,ef_nlocal,host_nlocal,max_nbors,maxspecial,
+                  *gpu,gpu_nbor,gpu_host,pre_cut,_block_cell_2d,
+                  _block_cell_id, _block_nbor_build, threads_per_atom,
+                  _warp_size, _time_device, compile_string()))
+    return -3;
+  if (_cell_size<0.0)
+    nbor->cell_size(cell_size,cell_size);
+  else
+    nbor->cell_size(_cell_size,cell_size);
+
   return 0;
 }
 
@@ -589,7 +635,7 @@ void DeviceT::output_kspace_times(UCL_Timer &time_in,
     if (screen && times[6]>0.0) {
       fprintf(screen,"\n\n-------------------------------------");
       fprintf(screen,"--------------------------------\n");
-      fprintf(screen,"    Device Time Info (average): ");
+      fprintf(screen,"    Device Time Info (average) for kspace: ");
       fprintf(screen,"\n-------------------------------------");
       fprintf(screen,"--------------------------------\n");
 
@@ -655,7 +701,7 @@ int DeviceT::compile_kernels() {
   dev_program=new UCL_Program(*gpu);
   int success=dev_program->load_string(device,compile_string().c_str());
   if (success!=UCL_SUCCESS)
-    return -4;
+    return -6;
   k_zero.set_function(*dev_program,"kernel_zero");
   k_info.set_function(*dev_program,"kernel_info");
   _compiled=true;

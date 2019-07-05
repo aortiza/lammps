@@ -36,9 +36,9 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
-#include <limits.h>
-#include <stdint.h>
-#include <inttypes.h>
+#include <climits>
+#include <stdint.h>   // <cstdint> requires C++-11
+#include <inttypes.h> // <cinttypes> requires C++-11
 
 // grrr - IBM Power6 does not provide this def in their system header files
 
@@ -179,6 +179,9 @@ typedef int bigint;
 #ifdef _noalias
 #undef _noalias
 #endif
+#ifdef _noopt
+#undef _noopt
+#endif
 
 // define stack variable alignment
 
@@ -200,12 +203,31 @@ typedef int bigint;
 #define _noalias
 #endif
 
-#define ISFINITE(x) isfinite(x)
+// declaration to turn off optimization for specific functions
+// and avoid compiler warnings about variable tracking
+
+#if defined(__clang__)
+#  define _noopt __attribute__((optnone))
+#elif defined(__INTEL_COMPILER)
+#  define _noopt
+#elif defined(__GNUC__)
+#  if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
+#    define _noopt __attribute__((optimize("O0","no-var-tracking-assignments")))
+#  else
+#    define _noopt __attribute__((optimize("O0")))
+#  endif
+#else
+#  define _noopt
+#endif
 
 // settings to enable LAMMPS to build under Windows
 
 #ifdef _WIN32
 #include "lmpwindows.h"
 #endif
+
+// suppress unused parameter warning
+
+#define LMP_UNUSED_PARAM(x) (void)(x)
 
 #endif

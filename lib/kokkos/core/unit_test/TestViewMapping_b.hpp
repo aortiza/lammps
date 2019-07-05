@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -173,12 +173,12 @@ void test_view_mapping_class_value()
 {
   typedef typename Space::execution_space ExecSpace;
 
-  ExecSpace::fence();
+  ExecSpace().fence();
   {
     Kokkos::View< MappingClassValueType, ExecSpace > a( "a" );
-    ExecSpace::fence();
+    ExecSpace().fence();
   }
-  ExecSpace::fence();
+  ExecSpace().fence();
 }
 
 TEST_F( TEST_CATEGORY , view_mapping_class_value )

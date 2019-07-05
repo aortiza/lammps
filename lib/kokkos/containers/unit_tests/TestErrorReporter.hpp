@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -47,6 +47,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <Kokkos_Core.hpp>
+#include <Kokkos_ErrorReporter.hpp>
 
 namespace Test {
 
@@ -161,6 +162,7 @@ struct ErrorReporterDriver : public ErrorReporterDriverBase<DeviceType>
   void execute(int reporter_capacity, int test_size)
   {
     Kokkos::parallel_for(Kokkos::RangePolicy<execution_space>(0,test_size), *this);
+    Kokkos::fence();
     driver_base::check_expectations(reporter_capacity, test_size);
   }
 
@@ -193,6 +195,7 @@ struct ErrorReporterDriverUseLambda : public ErrorReporterDriverBase<DeviceType>
         driver_base::m_errorReporter.add_report(work_idx, report);
       }
     });
+    Kokkos::fence();
     driver_base::check_expectations(reporter_capacity, test_size);
   }
 
@@ -222,6 +225,18 @@ struct ErrorReporterDriverNativeOpenMP : public ErrorReporterDriverBase<Kokkos::
   }
 };
 #endif
+
+#if defined(KOKKOS_CLASS_LAMBDA)
+TEST_F(TEST_CATEGORY, ErrorReporterViaLambda)
+{
+  TestErrorReporter<ErrorReporterDriverUseLambda<TEST_EXECSPACE>>();
+}
+#endif
+
+TEST_F(TEST_CATEGORY, ErrorReporter)
+{
+  TestErrorReporter<ErrorReporterDriver<TEST_EXECSPACE>>();
+}
 
 } // namespace Test
 #endif // #ifndef KOKKOS_TEST_ERROR_REPORTING_HPP

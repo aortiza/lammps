@@ -16,8 +16,8 @@
                         and Rochus Schmid (Ruhr-Universitaet Bochum)
 ------------------------------------------------------------------------- */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 #include "angle_cosine_buck6d.h"
 #include "atom.h"
 #include "neighbor.h"
@@ -56,7 +56,7 @@ AngleCosineBuck6d::~AngleCosineBuck6d()
 
 void AngleCosineBuck6d::compute(int eflag, int vflag)
 {
-  int i,i1,i2,i3,n,type,itype,jtype;
+  int i1,i2,i3,n,type,itype,jtype;
   double delx1,dely1,delz1,delx2,dely2,delz2;
   double eangle,f1[3],f3[3];
   double rsq1,rsq2,r1,r2,c,s,a,a11,a12,a22;
@@ -69,9 +69,8 @@ void AngleCosineBuck6d::compute(int eflag, int vflag)
   double rcu,rqu,sme,smf;
 
   eangle = evdwl = 0.0;
-  if (eflag || vflag) ev_setup(eflag,vflag);
-  else evflag = 0;
-  
+  ev_init(eflag,vflag);
+
   // insure pair->ev_tally() will use 1-3 virial contribution
 
   if (vflag_global == 2)
@@ -120,7 +119,7 @@ void AngleCosineBuck6d::compute(int eflag, int vflag)
     s = sqrt(1.0 - c*c);
     if (s < SMALL) s = SMALL;
     s = 1.0/s;
-    
+
     // force & energy
 
     // explicit lj-contribution
@@ -135,7 +134,7 @@ void AngleCosineBuck6d::compute(int eflag, int vflag)
 
     if (rsq3 < cut_ljsq[itype][jtype]) {
       r3 = sqrt(rsq3);
-      r32inv = 1.0/rsq3;          
+      r32inv = 1.0/rsq3;
       r36inv = r32inv*r32inv*r32inv;
       r314inv = r36inv*r36inv*r32inv;
       rexp = exp(-r3*buck6d2[itype][jtype]);
@@ -144,7 +143,7 @@ void AngleCosineBuck6d::compute(int eflag, int vflag)
       term3 = term2*term2;
       term4 = 1.0/(1.0 + term2);
       term5 = 1.0/(1.0 + 2.0*term2 + term3);
-      forcebuck6d = buck6d1[itype][jtype]*buck6d2[itype][jtype]*r3*rexp; 
+      forcebuck6d = buck6d1[itype][jtype]*buck6d2[itype][jtype]*r3*rexp;
       forcebuck6d -= term1*(6.0*term4 - term5*14.0*term2);
       ebuck6d = buck6d1[itype][jtype]*rexp - term1*term4;
 
@@ -152,14 +151,14 @@ void AngleCosineBuck6d::compute(int eflag, int vflag)
       if (rsq3 > rsmooth_sq[itype][jtype]) {
         rcu = r3*rsq3;
         rqu = rsq3*rsq3;
-        sme = c5[itype][jtype]*rqu*r3 + c4[itype][jtype]*rqu + c3[itype][jtype]*rcu + 
+        sme = c5[itype][jtype]*rqu*r3 + c4[itype][jtype]*rqu + c3[itype][jtype]*rcu +
               c2[itype][jtype]*rsq3 + c1[itype][jtype]*r3 + c0[itype][jtype];
-        smf = 5.0*c5[itype][jtype]*rqu + 4.0*c4[itype][jtype]*rcu + 
+        smf = 5.0*c5[itype][jtype]*rqu + 4.0*c4[itype][jtype]*rcu +
               3.0*c3[itype][jtype]*rsq3 + 2.0*c2[itype][jtype]*r3 + c1[itype][jtype];
         forcebuck6d = forcebuck6d*sme + ebuck6d*smf;
         ebuck6d *= sme;
       }
-    } else forcebuck6d = 0.0; 
+    } else forcebuck6d = 0.0;
 
     // add forces of additional LJ interaction
 
@@ -185,8 +184,8 @@ void AngleCosineBuck6d::compute(int eflag, int vflag)
     //update pair energy and velocities
 
     if (evflag) force->pair->ev_tally(i1,i3,nlocal,newton_pair,
-                                      evdwl,0.0,fpair,delx3,dely3,delz3); 
-    
+                                      evdwl,0.0,fpair,delx3,dely3,delz3);
+
     tk = multiplicity[type]*acos(c)-th0[type];
 
     if (eflag) eangle = k[type]*(1.0+cos(tk));
@@ -309,7 +308,7 @@ void AngleCosineBuck6d::init_style()
 
 /* ---------------------------------------------------------------------- */
 
-double AngleCosineBuck6d::equilibrium_angle(int i)
+double AngleCosineBuck6d::equilibrium_angle(int /*i*/)
 {
   return MY_PI;
 }
@@ -353,7 +352,7 @@ void AngleCosineBuck6d::read_restart(FILE *fp)
 void AngleCosineBuck6d::write_data(FILE *fp)
 {
   for (int i = 1; i <= atom->nangletypes; i++) {
-    fprintf(fp,"%d %g %d %d\n",i,k[i],multiplicity[i],th0[i]);
+    fprintf(fp,"%d %g %d %g\n",i,k[i],multiplicity[i],th0[i]);
   }
 }
 

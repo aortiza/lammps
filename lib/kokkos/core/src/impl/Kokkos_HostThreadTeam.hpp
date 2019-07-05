@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -51,6 +51,8 @@
 #include <impl/Kokkos_FunctorAdapter.hpp>
 #include <impl/Kokkos_FunctorAnalysis.hpp>
 #include <impl/Kokkos_HostBarrier.hpp>
+
+#include <limits> // std::numeric_limits
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
@@ -72,8 +74,8 @@ public:
 
   enum : int { max_pool_members  = 1024 };
   enum : int { max_team_members  = 64 };
-  enum : int { max_pool_rendezvous = rendezvous_buffer_size( max_pool_members ) };
-  enum : int { max_team_rendezvous = rendezvous_buffer_size( max_team_members ) };
+  enum : int { max_pool_rendezvous = HostBarrier::required_buffer_size };
+  enum : int { max_team_rendezvous = HostBarrier::required_buffer_size };
 
 private:
 
@@ -92,7 +94,7 @@ private:
   enum : int { m_team_rendezvous = m_pool_rendezvous + max_pool_rendezvous };
   enum : int { m_pool_reduce     = m_team_rendezvous + max_team_rendezvous };
 
-  using pair_int_t = Kokkos::pair<int,int> ;
+  using pair_int_t = Kokkos::pair<int64_t,int64_t> ;
 
   pair_int_t  m_work_range ;
   int64_t     m_work_end ;
@@ -113,8 +115,8 @@ private:
   int         m_league_size ;
   int         m_work_chunk ;
   int         m_steal_rank ; // work stealing rank
-  uint64_t mutable m_pool_rendezvous_step ;
-  uint64_t mutable m_team_rendezvous_step ;
+  int mutable m_pool_rendezvous_step ;
+  int mutable m_team_rendezvous_step ;
 
   HostThreadTeamData * team_member( int r ) const noexcept
     { return ((HostThreadTeamData**)(m_pool_scratch+m_pool_members))[m_team_base+r]; }
@@ -122,63 +124,106 @@ private:
 public:
 
   inline
-  int team_rendezvous( int const root ) const noexcept
-    {
-      return 1 == m_team_size ? 1 :
-             rendezvous( m_team_scratch + m_team_rendezvous
-                       , m_team_rendezvous_step
+  bool team_rendezvous() const noexcept
+  {
+    int * ptr = (int *)(m_team_scratch + m_team_rendezvous);
+    HostBarrier::split_arrive( ptr
+                             , m_team_size
+                             , m_team_rendezvous_step
+                             );
+    if (m_team_rank != 0) {
+      HostBarrier::wait( ptr
                        , m_team_size
-                       , ( m_team_rank + m_team_size - root ) % m_team_size
+                       , m_team_rendezvous_step
                        );
     }
-
-  inline
-  int team_rendezvous() const noexcept
-    {
-      return 1 == m_team_size ? 1 :
-             rendezvous( m_team_scratch + m_team_rendezvous
-                       , m_team_rendezvous_step
-                       , m_team_size
-                       , m_team_rank );
+    else {
+      HostBarrier::split_master_wait( ptr
+                                    , m_team_size
+                                    , m_team_rendezvous_step
+                                    );
     }
+
+    return m_team_rank == 0;
+  }
+  
+  inline
+  bool team_rendezvous(const int source_team_rank) const noexcept
+  {
+    int * ptr = (int *)(m_team_scratch + m_team_rendezvous);
+    HostBarrier::split_arrive( ptr
+                             , m_team_size
+                             , m_team_rendezvous_step
+                             );
+    if (m_team_rank != source_team_rank) {
+      HostBarrier::wait( ptr
+                       , m_team_size
+                       , m_team_rendezvous_step
+                       );
+    }
+    else {
+      HostBarrier::split_master_wait( ptr
+                                    , m_team_size
+                                    , m_team_rendezvous_step
+                                    );
+    }
+
+    return (m_team_rank == source_team_rank);
+  }
 
   inline
   void team_rendezvous_release() const noexcept
     {
-      if ( 1 < m_team_size ) {
-        rendezvous_release( m_team_scratch + m_team_rendezvous
-                          , m_team_rendezvous_step );
-      }
+      HostBarrier::split_release( (int *)(m_team_scratch + m_team_rendezvous)
+                                , m_team_size
+                                , m_team_rendezvous_step
+                                );
     }
 
   inline
   int pool_rendezvous() const noexcept
-    {
-      static constexpr bool active_wait =
-        #if defined( KOKKOS_COMPILER_IBM )
-            // If running on IBM POWER architecture the global
-            // level rendzvous should immediately yield when
-            // waiting for other threads in the pool to arrive.
-          false
-        #else
-          true
-        #endif
-          ;
-      return 1 == m_pool_size ? 1 :
-             rendezvous( m_pool_scratch + m_pool_rendezvous
-                       , m_pool_rendezvous_step
-                       , m_pool_size
-                       , m_pool_rank
-                       , active_wait
-                       );
+  {
+    // not sure if the follow hack is still needed with the new barrier
+    #if 0
+    static constexpr bool active_wait =
+    #if defined( KOKKOS_COMPILER_IBM )
+      // If running on IBM POWER architecture the global
+      // level rendzvous should immediately yield when
+      // waiting for other threads in the pool to arrive.
+      false;
+    #else
+      true;
+    #endif
+    #endif
+
+    int * ptr = (int *)(m_pool_scratch + m_pool_rendezvous);
+    HostBarrier::split_arrive( ptr
+        , m_pool_size
+        , m_pool_rendezvous_step
+        );
+    if (m_pool_rank != 0) {
+      HostBarrier::wait( ptr
+          , m_pool_size
+          , m_pool_rendezvous_step
+          );
     }
+    else {
+      HostBarrier::split_master_wait( ptr
+          , m_pool_size
+          , m_pool_rendezvous_step
+          );
+    }
+
+    return m_pool_rank == 0;
+  }
 
   inline
   void pool_rendezvous_release() const noexcept
     {
-      if ( 1 < m_pool_size ) {
-        rendezvous_release( m_pool_scratch + m_pool_rendezvous, m_pool_rendezvous_step );
-      }
+      HostBarrier::split_release( (int *)(m_pool_scratch + m_pool_rendezvous)
+                                , m_pool_size
+                                , m_pool_rendezvous_step
+                                );
     }
 
   //----------------------------------------
@@ -402,10 +447,13 @@ fflush(stdout);
 
   std::pair<int64_t,int64_t> get_work_partition() noexcept
     {
+      int64_t first = m_work_range.first;
+      int64_t second = m_work_range.second;
+      first *= m_work_chunk;
+      second *= m_work_chunk;
       return std::pair<int64_t,int64_t>
-        ( m_work_range.first * m_work_chunk
-        , m_work_range.second * m_work_chunk < m_work_end
-        ? m_work_range.second * m_work_chunk : m_work_end );
+        ( first
+        , second < m_work_end ? second : m_work_end );
     }
 
   std::pair<int64_t,int64_t> get_work_stealing_chunk() noexcept
@@ -431,6 +479,9 @@ class HostThreadTeamMember {
 public:
 
   using scratch_memory_space = typename HostExecSpace::scratch_memory_space ;
+  using execution_space = HostExecSpace;
+  using thread_team_member = HostThreadTeamMember;
+  using host_thread_team_member = HostThreadTeamMember;
 
 private:
 
@@ -444,8 +495,8 @@ public:
   constexpr HostThreadTeamMember( HostThreadTeamData & arg_data ) noexcept
     : m_scratch( arg_data.team_shared() , arg_data.team_shared_bytes() )
     , m_data( arg_data )
-    , m_league_rank(0)
-    , m_league_size(1)
+    , m_league_rank(arg_data.m_league_rank)
+    , m_league_size(arg_data.m_league_size)
     {}
 
   constexpr HostThreadTeamMember( HostThreadTeamData & arg_data
@@ -503,7 +554,7 @@ public:
   KOKKOS_INLINE_FUNCTION void team_barrier() const noexcept
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
     {
-      if ( m_data.team_rendezvous() ) m_data.team_rendezvous_release();
+      if ( m_data.team_rendezvous() ) { m_data.team_rendezvous_release(); };
     }
 #else
     {}
@@ -518,15 +569,16 @@ public:
     {
       if ( 1 < m_data.m_team_size ) {
         T volatile * const shared_value = (T*) m_data.team_reduce();
-
+		
         // Don't overwrite shared memory until all threads arrive
 
-        if ( m_data.team_rendezvous( source_team_rank ) ) {
+        if ( m_data.team_rendezvous(source_team_rank) ) {
+
           // All threads have entered 'team_rendezvous'
           // only this thread returned from 'team_rendezvous'
           // with a return value of 'true'
 
-          *shared_value = value ;
+          *shared_value = value;
 
           m_data.team_rendezvous_release();
           // This thread released all other threads from 'team_rendezvous'
@@ -546,6 +598,7 @@ public:
   template< class Closure , typename T >
   KOKKOS_INLINE_FUNCTION
   void team_broadcast( Closure const & f , T & value , const int source_team_rank) const noexcept
+#if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
     {
       T volatile * const shared_value = (T*) m_data.team_reduce();
 
@@ -569,6 +622,9 @@ public:
         value = *shared_value ;
       }
     }
+#else
+    { Kokkos::abort("HostThreadTeamMember team_broadcast\n"); }
+#endif
 
   //--------------------------------------------------------------------------
   // team_reduce( Sum(result) );
@@ -579,6 +635,12 @@ public:
   KOKKOS_INLINE_FUNCTION
   typename std::enable_if< is_reducer< ReducerType >::value >::type
   team_reduce( ReducerType const & reducer ) const noexcept
+  { team_reduce(reducer,reducer.reference()); }
+
+  template< typename ReducerType >
+  KOKKOS_INLINE_FUNCTION
+  typename std::enable_if< is_reducer< ReducerType >::value >::type
+  team_reduce( ReducerType const & reducer, typename ReducerType::value_type contribution ) const noexcept
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
     {
       if ( 1 < m_data.m_team_size ) {
@@ -589,7 +651,7 @@ public:
           // Non-root copies to their local buffer:
           /*reducer.copy( (value_type*) m_data.team_reduce_local()
                       , reducer.data() );*/
-          *((value_type*) m_data.team_reduce_local()) = reducer.reference();
+          *((value_type*) m_data.team_reduce_local()) = contribution;
         }
 
         // Root does not overwrite shared memory until all threads arrive
@@ -605,12 +667,13 @@ public:
             value_type * const src =
               (value_type*) m_data.team_member(i)->team_reduce_local();
 
-            reducer.join( reducer.reference(), *src);
+            reducer.join( contribution, *src);
           }
 
           // Copy result to root member's buffer:
           // reducer.copy( (value_type*) m_data.team_reduce() , reducer.data() );
-          *((value_type*) m_data.team_reduce()) = reducer.reference();
+          *((value_type*) m_data.team_reduce()) = contribution;
+          reducer.reference() = contribution;
           m_data.team_rendezvous_release();
           // This thread released all other threads from 'team_rendezvous'
           // with a return value of 'false'
@@ -619,6 +682,8 @@ public:
           // Copy from root member's buffer:
           reducer.reference() = *((value_type*) m_data.team_reduce());
         }
+      } else {
+        reducer.reference() = contribution;
       }
     }
 #else
@@ -744,39 +809,105 @@ public:
 
 namespace Kokkos {
 
-template<class Space,typename iType>
+template<typename iType, typename Member>
 KOKKOS_INLINE_FUNCTION
-Impl::TeamThreadRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >
-TeamThreadRange( Impl::HostThreadTeamMember<Space> const & member
-               , iType const & count )
+Impl::TeamThreadRangeBoundariesStruct<iType, Member>
+TeamThreadRange(
+  Member const & member,
+  iType count,
+  typename std::enable_if<
+    Impl::is_thread_team_member<Member>::value
+  >::type const** = nullptr
+)
 {
   return
     Impl::TeamThreadRangeBoundariesStruct
-      <iType,Impl::HostThreadTeamMember<Space> >(member,0,count);
+      <iType, Member>(member,0,count);
 }
 
-template<class Space, typename iType1, typename iType2>
+template<typename iType1, typename iType2, typename Member>
 KOKKOS_INLINE_FUNCTION
-Impl::TeamThreadRangeBoundariesStruct
-  < typename std::common_type< iType1, iType2 >::type
-  , Impl::HostThreadTeamMember<Space> >
-TeamThreadRange( Impl::HostThreadTeamMember<Space> const & member
-               , iType1 const & begin , iType2 const & end )
+Impl::TeamThreadRangeBoundariesStruct<
+  typename std::common_type< iType1, iType2 >::type, Member
+>
+TeamThreadRange(
+  Member const & member,
+  iType1 begin,
+  iType2 end,
+  typename std::enable_if<
+    Impl::is_thread_team_member<Member>::value
+  >::type const** = nullptr
+)
 {
   return
     Impl::TeamThreadRangeBoundariesStruct
       < typename std::common_type< iType1, iType2 >::type
-      , Impl::HostThreadTeamMember<Space> >( member , begin , end );
+      , Member >( member , begin , end );
 }
 
-template<class Space, typename iType>
+template<typename iType, typename Member>
 KOKKOS_INLINE_FUNCTION
-Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >
-ThreadVectorRange
-  ( Impl::HostThreadTeamMember<Space> const & member
-  , const iType & count )
+Impl::TeamThreadRangeBoundariesStruct<iType, Member>
+TeamVectorRange(
+  Member const & member,
+  iType count,
+  typename std::enable_if<
+    Impl::is_thread_team_member<Member>::value
+  >::type const** = nullptr
+)
 {
-  return Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >(member,count);
+  return
+    Impl::TeamThreadRangeBoundariesStruct
+      <iType, Member>(member,0,count);
+}
+
+template<typename iType1, typename iType2, typename Member>
+KOKKOS_INLINE_FUNCTION
+Impl::TeamThreadRangeBoundariesStruct<
+  typename std::common_type< iType1, iType2 >::type, Member
+>
+TeamVectorRange(
+  Member const & member,
+  iType1 begin,
+  iType2 end,
+  typename std::enable_if<
+    Impl::is_thread_team_member<Member>::value
+  >::type const** = nullptr
+)
+{
+  return
+    Impl::TeamThreadRangeBoundariesStruct
+      < typename std::common_type< iType1, iType2 >::type
+      , Member >( member , begin , end );
+}
+
+template<typename iType, typename Member>
+KOKKOS_INLINE_FUNCTION
+Impl::ThreadVectorRangeBoundariesStruct<iType, Member>
+ThreadVectorRange(
+  Member const & member,
+  iType count,
+  typename std::enable_if<
+    Impl::is_thread_team_member<Member>::value
+  >::type const** = nullptr
+)
+{
+  return Impl::ThreadVectorRangeBoundariesStruct<iType, Member>(member,count);
+}
+
+template<typename iType, typename Member>
+KOKKOS_INLINE_FUNCTION
+Impl::ThreadVectorRangeBoundariesStruct<iType, Member>
+ThreadVectorRange(
+  Member const & member,
+  iType arg_begin,
+  iType arg_end,
+  typename std::enable_if<
+    Impl::is_thread_team_member<Member>::value
+  >::type const** = nullptr
+)
+{
+  return Impl::ThreadVectorRangeBoundariesStruct<iType, Member>(member,arg_begin,arg_end);
 }
 
 //----------------------------------------------------------------------------
@@ -786,11 +917,14 @@ ThreadVectorRange
  *
  * The range [0..N) is mapped to all threads of the the calling thread team.
 */
-template<typename iType, class Space, class Closure>
+template<typename iType, class Closure, class Member>
 KOKKOS_INLINE_FUNCTION
 void parallel_for
-  ( Impl::TeamThreadRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> > const & loop_boundaries
+  ( Impl::TeamThreadRangeBoundariesStruct<iType, Member> const & loop_boundaries
   , Closure const & closure
+  , typename std::enable_if<
+      Impl::is_host_thread_team_member<Member>::value
+    >::type const** = nullptr
   )
 {
   for( iType i = loop_boundaries.start
@@ -800,11 +934,14 @@ void parallel_for
   }
 }
 
-template<typename iType, class Space, class Closure>
+template<typename iType, class Closure, class Member>
 KOKKOS_INLINE_FUNCTION
 void parallel_for
-  ( Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> > const & loop_boundaries
+  ( Impl::ThreadVectorRangeBoundariesStruct<iType, Member> const & loop_boundaries
   , Closure const & closure
+  , typename std::enable_if<
+      Impl::is_host_thread_team_member<Member>::value
+    >::type const** = nullptr
   )
 {
   #ifdef KOKKOS_ENABLE_PRAGMA_IVDEP
@@ -819,40 +956,47 @@ void parallel_for
 
 //----------------------------------------------------------------------------
 
-template< typename iType, class Space, class Closure, class Reducer >
+template< typename iType, class Closure, class Reducer, class Member >
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if< Kokkos::is_reducer< Reducer >::value >::type
+typename std::enable_if<
+  Kokkos::is_reducer< Reducer >::value
+  && Impl::is_host_thread_team_member<Member>::value
+>::type
 parallel_reduce
-  ( Impl::TeamThreadRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >
+  ( Impl::TeamThreadRangeBoundariesStruct<iType, Member>
              const & loop_boundaries
   , Closure  const & closure
   , Reducer  const & reducer
   )
 {
-  reducer.init( reducer.reference() );
+  typename Reducer::value_type value;
+  reducer.init( value );
 
   for( iType i = loop_boundaries.start
      ; i <  loop_boundaries.end
      ; i += loop_boundaries.increment ) {
-    closure( i , reducer.reference() );
+    closure( i , value );
   }
-
-  loop_boundaries.thread.team_reduce( reducer );
+  
+  loop_boundaries.thread.team_reduce( reducer, value );
 }
 
-template< typename iType, class Space, typename Closure, typename ValueType >
+template< typename iType, typename Closure, typename ValueType, typename Member >
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if< ! Kokkos::is_reducer<ValueType>::value >::type
+typename std::enable_if<
+  ! Kokkos::is_reducer<ValueType>::value
+  && Impl::is_host_thread_team_member<Member>::value
+>::type
 parallel_reduce
-  ( Impl::TeamThreadRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >
+  ( Impl::TeamThreadRangeBoundariesStruct<iType, Member >
              const & loop_boundaries
   , Closure  const & closure
   , ValueType      & result
   )
 {
-  Kokkos::Experimental::Sum<ValueType> reducer( result );
-
-  reducer.init( result );
+  ValueType val;
+  Sum<ValueType> reducer( val );
+  reducer.init( val );
 
   for( iType i = loop_boundaries.start
      ; i <  loop_boundaries.end
@@ -861,6 +1005,7 @@ parallel_reduce
   }
 
   loop_boundaries.thread.team_reduce( reducer );
+  result = reducer.reference();
 }
 
 /*template< typename iType, class Space
@@ -896,11 +1041,14 @@ void parallel_reduce
  *  calling thread team and a summation of  val is
  *  performed and put into result.
  */
-template< typename iType, class Space , class Lambda, typename ValueType >
+template< typename iType, class Lambda, typename ValueType, typename Member >
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if< ! Kokkos::is_reducer<ValueType>::value >::type
+typename std::enable_if<
+  ! Kokkos::is_reducer<ValueType>::value
+  && Impl::is_host_thread_team_member<Member>::value
+>::type
 parallel_reduce
-  (const Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >& loop_boundaries,
+  (const Impl::ThreadVectorRangeBoundariesStruct<iType, Member>& loop_boundaries,
    const Lambda & lambda,
    ValueType& result)
 {
@@ -912,11 +1060,14 @@ parallel_reduce
   }
 }
 
-template< typename iType, class Space , class Lambda, typename ReducerType >
+template< typename iType, class Lambda, typename ReducerType, typename Member >
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if< Kokkos::is_reducer< ReducerType >::value >::type
+typename std::enable_if<
+  Kokkos::is_reducer< ReducerType >::value
+  && Impl::is_host_thread_team_member<Member>::value
+>::type
 parallel_reduce
-  (const Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >& loop_boundaries,
+  (const Impl::ThreadVectorRangeBoundariesStruct<iType, Member>& loop_boundaries,
    const Lambda & lambda,
    const ReducerType& reducer)
 {
@@ -928,41 +1079,15 @@ parallel_reduce
   }
 }
 
-/** \brief  Intra-thread vector parallel_reduce.
- *
- *  Executes lambda(iType i, ValueType & val) for each i=[0..N)
- *
- *  The range [0..N) is mapped to all vector lanes of the the
- *  calling thread and a reduction of val is performed using
- *  JoinType(ValueType& val, const ValueType& update)
- *  and put into init_result.
- *  The input value of init_result is used as initializer for
- *  temporary variables of ValueType. Therefore * the input
- *  value should be the neutral element with respect to the
- *  join operation (e.g. '0 for +-' or * '1 for *').
- */
-template< typename iType, class Space
-        , class Lambda, class JoinType , typename ValueType >
-KOKKOS_INLINE_FUNCTION
-void parallel_reduce
-  (const Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> >& loop_boundaries,
-   const Lambda & lambda,
-   const JoinType & join,
-   ValueType& result)
-{
-  for( iType i =  loop_boundaries.start ;
-             i <  loop_boundaries.end ;
-             i += loop_boundaries.increment ) {
-    lambda(i,result);
-  }
-}
-
 //----------------------------------------------------------------------------
 
-template< typename iType, class Space, class Closure >
+template< typename iType, class Closure, class Member >
 KOKKOS_INLINE_FUNCTION
-void parallel_scan
-  ( Impl::TeamThreadRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> > const & loop_boundaries
+typename std::enable_if<
+  Impl::is_host_thread_team_member<Member>::value
+>::type
+parallel_scan
+  ( Impl::TeamThreadRangeBoundariesStruct<iType, Member> const & loop_boundaries
   , Closure const & closure
   )
 {
@@ -994,10 +1119,13 @@ void parallel_scan
 }
 
 
-template< typename iType, class Space, class ClosureType >
+template< typename iType, class ClosureType, class Member >
 KOKKOS_INLINE_FUNCTION
-void parallel_scan
-  ( Impl::ThreadVectorRangeBoundariesStruct<iType,Impl::HostThreadTeamMember<Space> > const & loop_boundaries
+typename std::enable_if<
+  Impl::is_host_thread_team_member<Member>::value
+>::type
+parallel_scan
+  ( Impl::ThreadVectorRangeBoundariesStruct<iType, Member > const & loop_boundaries
   , ClosureType const & closure
   )
 {
@@ -1021,47 +1149,65 @@ void parallel_scan
 
 //----------------------------------------------------------------------------
 
-template< class Space >
+template< class Member >
 KOKKOS_INLINE_FUNCTION
-Impl::ThreadSingleStruct<Impl::HostThreadTeamMember<Space> >
-PerTeam(const Impl::HostThreadTeamMember<Space> & member )
+Impl::ThreadSingleStruct<Member>
+PerTeam(
+  Member const& member,
+  typename std::enable_if<Impl::is_thread_team_member<Member>::value>::type const** = nullptr
+)
 {
-  return Impl::ThreadSingleStruct<Impl::HostThreadTeamMember<Space> >(member);
+  return Impl::ThreadSingleStruct<Member>(member);
 }
 
-template< class Space >
+template< class Member >
 KOKKOS_INLINE_FUNCTION
-Impl::VectorSingleStruct<Impl::HostThreadTeamMember<Space> >
-PerThread(const Impl::HostThreadTeamMember<Space> & member)
+Impl::VectorSingleStruct<Member>
+PerThread(
+  Member const& member,
+  typename std::enable_if<Impl::is_thread_team_member<Member>::value>::type const** = nullptr
+)
 {
-  return Impl::VectorSingleStruct<Impl::HostThreadTeamMember<Space> >(member);
+  return Impl::VectorSingleStruct<Member>(member);
 }
 
-template< class Space , class FunctorType >
+template< class Member , class FunctorType >
 KOKKOS_INLINE_FUNCTION
-void single( const Impl::ThreadSingleStruct< Impl::HostThreadTeamMember<Space> > & single , const FunctorType & functor )
+typename std::enable_if<
+  Impl::is_host_thread_team_member<Member>::value
+>::type
+single( const Impl::ThreadSingleStruct<Member> & single , const FunctorType & functor )
 {
   // 'single' does not perform a barrier.
   if ( single.team_member.team_rank() == 0 ) functor();
 }
 
-template< class Space , class FunctorType , typename ValueType >
+template< class Member, class FunctorType , typename ValueType >
 KOKKOS_INLINE_FUNCTION
-void single( const Impl::ThreadSingleStruct< Impl::HostThreadTeamMember<Space> > & single , const FunctorType & functor , ValueType & val )
+typename std::enable_if<
+  Impl::is_host_thread_team_member<Member>::value
+>::type
+single( const Impl::ThreadSingleStruct<Member> & single , const FunctorType & functor , ValueType & val )
 {
   single.team_member.team_broadcast( functor , val , 0 );
 }
 
-template< class Space , class FunctorType >
+template< class Member, class FunctorType >
 KOKKOS_INLINE_FUNCTION
-void single( const Impl::VectorSingleStruct< Impl::HostThreadTeamMember<Space> > & , const FunctorType & functor )
+typename std::enable_if<
+  Impl::is_host_thread_team_member<Member>::value
+>::type
+single( const Impl::VectorSingleStruct<Member> & , const FunctorType & functor )
 {
   functor();
 }
 
-template< class Space , class FunctorType , typename ValueType >
+template< class Member, class FunctorType , typename ValueType >
 KOKKOS_INLINE_FUNCTION
-void single( const Impl::VectorSingleStruct< Impl::HostThreadTeamMember<Space> > & , const FunctorType & functor , ValueType & val )
+typename std::enable_if<
+  Impl::is_host_thread_team_member<Member>::value
+>::type
+single( const Impl::VectorSingleStruct<Member> & , const FunctorType & functor , ValueType & val )
 {
   functor(val);
 }

@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -75,9 +75,11 @@ public:
   inline
   void execute()
   {
-    const int pool_size = OpenMP::thread_pool_size();
-
-    #pragma omp parallel num_threads(pool_size)
+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE
+    #pragma omp parallel num_threads(OpenMP::thread_pool_size())
+#else
+    #pragma omp parallel num_threads(OpenMP::impl_thread_pool_size())
+#endif
     {
       // Spin until COMPLETED_TOKEN.
       // END_TOKEN indicates no work is currently available.

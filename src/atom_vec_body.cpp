@@ -11,9 +11,9 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include "atom_vec_body.h"
 #include "style_body.h"
 #include "body.h"
@@ -25,6 +25,7 @@
 #include "fix.h"
 #include "memory.h"
 #include "error.h"
+#include "utils.h"
 
 using namespace LAMMPS_NS;
 
@@ -82,6 +83,9 @@ AtomVecBody::~AtomVecBody()
 
 void AtomVecBody::process_args(int narg, char **arg)
 {
+  // suppress unused parameter warning dependent on style_body.h
+  (void)(arg);
+
   if (narg < 1) error->all(FLERR,"Invalid atom_style body command");
 
   if (0) bptr = NULL;
@@ -93,7 +97,7 @@ void AtomVecBody::process_args(int narg, char **arg)
 #undef BodyStyle
 #undef BODY_CLASS
 
-  else error->all(FLERR,"Unknown body style");
+  else error->all(FLERR,utils::check_packages_for_style("body",arg[0],lmp).c_str());
 
   bptr->avec = this;
   icp = bptr->icp;
@@ -1055,9 +1059,9 @@ int AtomVecBody::unpack_exchange(double *buf)
     bonus[nlocal_bonus].ndouble = (int) ubuf(buf[m++]).i;
     // corresponding put() calls are in copy()
     bonus[nlocal_bonus].ivalue = icp->get(bonus[nlocal_bonus].ninteger,
-					  bonus[nlocal_bonus].iindex);
+                                          bonus[nlocal_bonus].iindex);
     bonus[nlocal_bonus].dvalue = dcp->get(bonus[nlocal_bonus].ndouble,
-					  bonus[nlocal_bonus].dindex);
+                                          bonus[nlocal_bonus].dindex);
     memcpy(bonus[nlocal_bonus].ivalue,&buf[m],
            bonus[nlocal_bonus].ninteger*sizeof(int));
     if (intdoubleratio == 1) m += bonus[nlocal_bonus].ninteger;
@@ -1209,9 +1213,9 @@ int AtomVecBody::unpack_restart(double *buf)
     bonus[nlocal_bonus].ninteger = (int) ubuf(buf[m++]).i;
     bonus[nlocal_bonus].ndouble = (int) ubuf(buf[m++]).i;
     bonus[nlocal_bonus].ivalue = icp->get(bonus[nlocal_bonus].ninteger,
-					  bonus[nlocal_bonus].iindex);
+                                          bonus[nlocal_bonus].iindex);
     bonus[nlocal_bonus].dvalue = dcp->get(bonus[nlocal_bonus].ndouble,
-					  bonus[nlocal_bonus].dindex);
+                                          bonus[nlocal_bonus].dindex);
     memcpy(bonus[nlocal_bonus].ivalue,&buf[m],
            bonus[nlocal_bonus].ninteger*sizeof(int));
     if (intdoubleratio == 1) m += bonus[nlocal_bonus].ninteger;
@@ -1283,7 +1287,7 @@ void AtomVecBody::data_atom(double *coord, imageint imagetmp, char **values)
   body[nlocal] = atoi(values[2]);
   if (body[nlocal] == 0) body[nlocal] = -1;
   else if (body[nlocal] == 1) body[nlocal] = 0;
-  else error->one(FLERR,"Invalid atom type in Atoms section of data file");
+  else error->one(FLERR,"Invalid bodyflag in Atoms section of data file");
 
   rmass[nlocal] = atof(values[3]);
   if (rmass[nlocal] <= 0.0)
@@ -1331,7 +1335,7 @@ int AtomVecBody::data_atom_hybrid(int nlocal, char **values)
 ------------------------------------------------------------------------- */
 
 void AtomVecBody::data_body(int m, int ninteger, int ndouble,
-			    int *ivalues, double *dvalues)
+                            int *ivalues, double *dvalues)
 {
   if (body[m]) error->one(FLERR,"Assigning body parameters to non-body atom");
   if (nlocal_bonus == nmax_bonus) grow_bonus();
@@ -1482,7 +1486,7 @@ int AtomVecBody::write_vel_hybrid(FILE *fp, double *buf)
 ------------------------------------------------------------------------- */
 
 double AtomVecBody::radius_body(int ninteger, int ndouble,
-				int *ivalues, double *dvalues)
+                                int *ivalues, double *dvalues)
 {
   return bptr->radius_body(ninteger,ndouble,ivalues,dvalues);
 }

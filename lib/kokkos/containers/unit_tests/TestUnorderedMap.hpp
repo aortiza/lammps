@@ -34,7 +34,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -44,7 +44,7 @@
 
 #include <gtest/gtest.h>
 #include <iostream>
-
+#include <Kokkos_UnorderedMap.hpp>
 
 namespace Test {
 
@@ -69,7 +69,7 @@ struct TestInsert
 
   void testit( bool rehash_on_fail = true )
   {
-    execution_space::fence();
+    execution_space().fence();
 
     uint32_t failed_count = 0;
     do {
@@ -82,7 +82,7 @@ struct TestInsert
       }
     } while (rehash_on_fail && failed_count > 0u);
 
-    execution_space::fence();
+    execution_space().fence();
   }
 
 
@@ -122,9 +122,9 @@ struct TestInsert
 
     void testit()
     {
-      execution_space::fence();
+      execution_space().fence();
       Kokkos::parallel_for(m_num_erase, *this);
-      execution_space::fence();
+      execution_space().fence();
     }
 
     KOKKOS_INLINE_FUNCTION
@@ -161,9 +161,9 @@ struct TestInsert
 
     void testit(value_type &errors)
     {
-      execution_space::execution_space::fence();
+      execution_space().fence();
       Kokkos::parallel_reduce(m_map.capacity(), *this, errors);
-      execution_space::execution_space::fence();
+      execution_space().fence();
     }
 
     KOKKOS_INLINE_FUNCTION
@@ -247,7 +247,7 @@ void test_failed_insert( uint32_t num_nodes)
   map_type map(num_nodes);
   Impl::TestInsert<map_type> test_insert(map, 2u*num_nodes, 1u);
   test_insert.testit(false /*don't rehash on fail*/);
-  Device::execution_space::fence();
+  typename Device::execution_space().fence();
 
   EXPECT_TRUE( map.failed_insert() );
 }
@@ -306,6 +306,23 @@ void test_deep_copy( uint32_t num_nodes )
     EXPECT_EQ( find_errors, 0u);
   }
 
+}
+
+TEST_F( TEST_CATEGORY, UnorderedMap_insert) {
+  for (int i=0; i<500; ++i) {
+    test_insert<TEST_EXECSPACE>(100000, 90000, 100, true);
+    test_insert<TEST_EXECSPACE>(100000, 90000, 100, false);
+  }
+}
+
+TEST_F( TEST_CATEGORY, UnorderedMap_failed_insert) {
+  for (int i=0; i<1000; ++i)
+    test_failed_insert<TEST_EXECSPACE>(10000);
+}
+
+TEST_F( TEST_CATEGORY, UnorderedMap_deep_copy) {
+  for (int i=0; i<2; ++i)
+    test_deep_copy<TEST_EXECSPACE>(10000);
 }
 
 } // namespace Test

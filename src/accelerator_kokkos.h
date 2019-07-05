@@ -28,6 +28,8 @@
 #include "memory_kokkos.h"
 #include "modify_kokkos.h"
 
+#define LAMMPS_INLINE KOKKOS_INLINE_FUNCTION
+
 #else
 
 // dummy interface to KOKKOS
@@ -41,13 +43,15 @@
 #include "memory.h"
 #include "modify.h"
 
+#define LAMMPS_INLINE inline
+
 namespace LAMMPS_NS {
 
 class KokkosLMP {
  public:
   int kokkos_exists;
-  int num_threads;
-  int ngpu;
+  int nthreads;
+  int ngpus;
   int numa;
 
   KokkosLMP(class LAMMPS *, int, char **) {kokkos_exists = 0;}
@@ -62,8 +66,8 @@ class AtomKokkos : public Atom {
   tagint **k_special;
   AtomKokkos(class LAMMPS *lmp) : Atom(lmp) {}
   ~AtomKokkos() {}
-  void sync(const ExecutionSpace space, unsigned int mask) {}
-  void modified(const ExecutionSpace space, unsigned int mask) {}
+  void sync(const ExecutionSpace /*space*/, unsigned int /*mask*/) {}
+  void modified(const ExecutionSpace /*space*/, unsigned int /*mask*/) {}
 };
 
 class CommKokkos : public CommBrick {

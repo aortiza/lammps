@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -92,27 +92,26 @@ long fib_alloc_count( long n )
   return count[ n & mask ];
 }
 
-template< class Space >
+template< class Scheduler >
 struct TestFib {
 
-  using Scheduler   = Kokkos::TaskScheduler< Space > ;
   using MemorySpace = typename Scheduler::memory_space ;
   using MemberType  = typename Scheduler::member_type ;
-  using FutureType  = Kokkos::Future< long , Space > ;
+  using FutureType  = Kokkos::BasicFuture< long , Scheduler > ;
 
   typedef long value_type ;
 
-  Scheduler  sched ;
   FutureType dep[2] ;
   const value_type n ;
 
   KOKKOS_INLINE_FUNCTION
-  TestFib( const Scheduler & arg_sched , const value_type arg_n )
-    : sched( arg_sched ), dep{} , n( arg_n ) {}
+  TestFib( const value_type arg_n )
+    : dep{} , n( arg_n ) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator()( const MemberType & , value_type & result ) noexcept
+  void operator()( MemberType & member, value_type & result ) noexcept
     {
+      auto& sched = member.scheduler();
       if ( n < 2 ) {
         result = n ;
       }
@@ -126,13 +125,13 @@ struct TestFib {
 
         dep[1] = Kokkos::task_spawn
           ( Kokkos::TaskSingle( sched, Kokkos::TaskPriority::High )
-          , TestFib( sched, n - 2 ) );
+          , TestFib( n - 2 ) );
 
         dep[0] = Kokkos::task_spawn
           ( Kokkos::TaskSingle( sched )
-          , TestFib( sched, n - 1 ) );
+          , TestFib( n - 1 ) );
 
-        Kokkos::Future< ExecSpace > fib_all = Kokkos::when_all( dep, 2 );
+        auto fib_all = sched.when_all( dep, 2 );
 
         if ( ! dep[0].is_null() && ! dep[1].is_null() && ! fib_all.is_null() ) {
           // High priority to retire this branch.
@@ -202,80 +201,85 @@ int main( int argc , char* argv[] )
     return -1;
   }
 
-  typedef TestFib< ExecSpace >  Functor ;
+  using Scheduler = Kokkos::TaskSchedulerMultiple<ExecSpace>;
+
+  typedef TestFib< Scheduler >  Functor ;
 
   Kokkos::initialize(argc,argv);
 
-  Functor::Scheduler sched( Functor::MemorySpace()
-                          , total_alloc_size
-                          , min_block_size
-                          , max_block_size
-                          , min_superblock_size
-                          );
+  {
 
-  Functor::FutureType f =
-    Kokkos::host_spawn( Kokkos::TaskSingle( sched )
-                      , Functor( sched , fib_input )
-                      );
+    Scheduler sched( Functor::MemorySpace()
+                            , total_alloc_size
+                            , min_block_size
+                            , max_block_size
+                            , min_superblock_size
+                            );
 
-  Kokkos::wait( sched );
-
-  test_result = f.get();
-
-  task_count_max   = sched.allocated_task_count_max();
-  task_count_accum = sched.allocated_task_count_accum();
-
-  if ( number_alloc != task_count_accum ) {
-    std::cout << " number_alloc( " << number_alloc << " )"
-              << " != task_count_accum( " << task_count_accum << " )"
-              << std::endl ;
-  }
-
-  if ( fib_output != test_result ) {
-    std::cout << " answer( " << fib_output << " )"
-              << " != result( " << test_result << " )"
-              << std::endl ;
-  }
-
-  if ( fib_output != test_result || number_alloc != task_count_accum ) {
-    printf("  TEST FAILED\n");
-    return -1;
-  }
-
-  double min_time = std::numeric_limits<double>::max();
-  double time_sum = 0;
-
-  for ( int i = 0 ; i < test_repeat_outer ; ++i ) {
-    Kokkos::Impl::Timer timer ;
-
-    Functor::FutureType ftmp =
+    Functor::FutureType f =
       Kokkos::host_spawn( Kokkos::TaskSingle( sched )
-                        , Functor( sched , fib_input )
+                        , Functor( fib_input )
                         );
 
     Kokkos::wait( sched );
-    auto this_time = timer.seconds();
-    min_time = std::min(min_time, this_time);
-    time_sum += this_time;
-  }
 
-  auto avg_time = time_sum / test_repeat_outer;
+    test_result = f.get();
+
+    //task_count_max   = sched.allocated_task_count_max();
+    //task_count_accum = sched.allocated_task_count_accum();
+
+    //if ( number_alloc != task_count_accum ) {
+    //  std::cout << " number_alloc( " << number_alloc << " )"
+    //            << " != task_count_accum( " << task_count_accum << " )"
+    //            << std::endl ;
+    //}
+
+    if ( fib_output != test_result ) {
+      std::cout << " answer( " << fib_output << " )"
+                << " != result( " << test_result << " )"
+                << std::endl ;
+    }
+
+    if ( fib_output != test_result) { // || number_alloc != task_count_accum ) {
+      printf("  TEST FAILED\n");
+      return -1;
+    }
+
+    double min_time = std::numeric_limits<double>::max();
+    double time_sum = 0;
+
+    for ( int i = 0 ; i < test_repeat_outer ; ++i ) {
+      Kokkos::Impl::Timer timer ;
+
+      Functor::FutureType ftmp =
+        Kokkos::host_spawn( Kokkos::TaskSingle( sched )
+                          , Functor( fib_input )
+                          );
+
+      Kokkos::wait( sched );
+      auto this_time = timer.seconds();
+      min_time = std::min(min_time, this_time);
+      time_sum += this_time;
+    }
+
+    auto avg_time = time_sum / test_repeat_outer;
+
+    printf( "\"taskdag: alloc super repeat input output task-accum task-max\" %ld %d %d %d %ld %ld %ld\n"
+          , total_alloc_size
+          , min_superblock_size
+          , test_repeat_outer
+          , fib_input
+          , fib_output
+          , task_count_accum
+          , task_count_max );
+
+    printf( "\"taskdag: time (min, avg)\" %g %g\n", min_time, avg_time);
+    printf( "\"taskdag: tasks per second (max, avg)\" %g %g\n"
+          , number_alloc / min_time
+          , number_alloc / avg_time );
+  } // end scope to destroy scheduler prior to finalize
 
   Kokkos::finalize();
-
-  printf( "\"taskdag: alloc super repeat input output task-accum task-max\" %ld %d %d %d %ld %ld %ld\n"
-        , total_alloc_size
-        , min_superblock_size
-        , test_repeat_outer
-        , fib_input
-        , fib_output
-        , task_count_accum
-        , task_count_max );
-
-  printf( "\"taskdag: time (min, avg)\" %g %g\n", min_time, avg_time);
-  printf( "\"taskdag: tasks per second (max, avg)\" %g %g\n"
-        , number_alloc / min_time
-        , number_alloc / avg_time );
 
   return 0 ;
 }

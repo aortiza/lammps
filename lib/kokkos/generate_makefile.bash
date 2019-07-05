@@ -15,12 +15,15 @@ do
     --qthreads-path*)
       QTHREADS_PATH="${key#*=}"
       ;;
+    --hpx-path*)
+      HPX_PATH="${key#*=}"
+      ;;
     --prefix*)
       PREFIX="${key#*=}"
       ;;
     --with-cuda)
       KOKKOS_DEVICES="${KOKKOS_DEVICES},Cuda"
-      CUDA_PATH_NVCC=`which nvcc`
+      CUDA_PATH_NVCC=$(command -v nvcc)
       CUDA_PATH=${CUDA_PATH_NVCC%/bin/nvcc}
       ;;
     # Catch this before '--with-cuda*'
@@ -49,6 +52,15 @@ do
         QTHREADS_PATH="${key#*=}"
       fi
       ;;
+    --with-hpx-options*)
+      KOKKOS_HPX_OPT="${key#*=}"
+      ;;
+    --with-hpx*)
+      KOKKOS_DEVICES="${KOKKOS_DEVICES},HPX"
+      if [ -z "$HPX_PATH" ]; then
+        HPX_PATH="${key#*=}"
+      fi
+      ;;
     --with-devices*)
       DEVICES="${key#*=}"
       KOKKOS_DEVICES="${KOKKOS_DEVICES},${DEVICES}"
@@ -68,6 +80,9 @@ do
     --cxxflags*)
       CXXFLAGS="${key#*=}"
       ;;
+    --cxxstandard*)
+      KOKKOS_CXX_STANDARD="${key#*=}"
+      ;;
     --ldflags*)
       LDFLAGS="${key#*=}"
       ;;
@@ -83,7 +98,7 @@ do
       ;;
     --compiler*)
       COMPILER="${key#*=}"
-      CNUM=`which ${COMPILER} 2>&1 >/dev/null | grep "no ${COMPILER}" | wc -l`
+      CNUM=$(command -v ${COMPILER} 2>&1 >/dev/null | grep "no ${COMPILER}" | wc -l)
       if [ ${CNUM} -gt 0 ]; then
         echo "Invalid compiler by --compiler command: '${COMPILER}'"
         exit
@@ -92,17 +107,26 @@ do
         echo "Empty compiler specified by --compiler command."
         exit
       fi
-      CNUM=`which ${COMPILER} | grep ${COMPILER} | wc -l`
+      CNUM=$(command -v ${COMPILER} | grep ${COMPILER} | wc -l)
       if [ ${CNUM} -eq 0 ]; then
         echo "Invalid compiler by --compiler command: '${COMPILER}'"
         exit
       fi
+      # ... valid compiler, ensure absolute path set 
+      WCOMPATH=$(command -v $COMPILER)
+      COMPDIR=$(dirname $WCOMPATH)
+      COMPNAME=$(basename $WCOMPATH)
+      COMPILER=${COMPDIR}/${COMPNAME}
       ;;
     --with-options*)
       KOKKOS_OPT="${key#*=}"
       ;;
+    --gcc-toolchain*)
+      KOKKOS_GCC_TOOLCHAIN="${key#*=}"
+      ;;
     --help)
       echo "Kokkos configure options:"
+      echo ""
       echo "--kokkos-path=/Path/To/Kokkos:        Path to the Kokkos root directory."
       echo "--qthreads-path=/Path/To/Qthreads:    Path to Qthreads install directory."
       echo "                                        Overrides path given by --with-qthreads."
@@ -117,35 +141,39 @@ do
       echo ""
       echo "--arch=[OPT]:  Set target architectures. Options are:"
       echo "               [AMD]"
-      echo "                 AMDAVX         = AMD CPU"
+      echo "                 AMDAVX          = AMD CPU"
+      echo "                 EPYC            = AMD EPYC Zen-Core CPU"
       echo "               [ARM]"
-      echo "                 ARMv80         = ARMv8.0 Compatible CPU"
-      echo "                 ARMv81         = ARMv8.1 Compatible CPU"
-      echo "                 ARMv8-ThunderX = ARMv8 Cavium ThunderX CPU"
+      echo "                 ARMv80          = ARMv8.0 Compatible CPU"
+      echo "                 ARMv81          = ARMv8.1 Compatible CPU"
+      echo "                 ARMv8-ThunderX  = ARMv8 Cavium ThunderX CPU"
+      echo "                 ARMv8-TX2       = ARMv8 Cavium ThunderX2 CPU"
       echo "               [IBM]"
-      echo "                 BGQ            = IBM Blue Gene Q"
-      echo "                 Power7         = IBM POWER7 and POWER7+ CPUs"
-      echo "                 Power8         = IBM POWER8 CPUs"
-      echo "                 Power9         = IBM POWER9 CPUs"
+      echo "                 BGQ             = IBM Blue Gene Q"
+      echo "                 Power7          = IBM POWER7 and POWER7+ CPUs"
+      echo "                 Power8          = IBM POWER8 CPUs"
+      echo "                 Power9          = IBM POWER9 CPUs"
       echo "               [Intel]"
-      echo "                 WSM            = Intel Westmere CPUs"
-      echo "                 SNB            = Intel Sandy/Ivy Bridge CPUs"
-      echo "                 HSW            = Intel Haswell CPUs"
-      echo "                 BDW            = Intel Broadwell Xeon E-class CPUs"
-      echo "                 SKX            = Intel Sky Lake Xeon E-class HPC CPUs (AVX512)"
+      echo "                 WSM             = Intel Westmere CPUs"
+      echo "                 SNB             = Intel Sandy/Ivy Bridge CPUs"
+      echo "                 HSW             = Intel Haswell CPUs"
+      echo "                 BDW             = Intel Broadwell Xeon E-class CPUs"
+      echo "                 SKX             = Intel Sky Lake Xeon E-class HPC CPUs (AVX512)"
       echo "               [Intel Xeon Phi]"
-      echo "                 KNC            = Intel Knights Corner Xeon Phi"
-      echo "                 KNL            = Intel Knights Landing Xeon Phi"
+      echo "                 KNC             = Intel Knights Corner Xeon Phi"
+      echo "                 KNL             = Intel Knights Landing Xeon Phi"
       echo "               [NVIDIA]"
-      echo "                 Kepler30       = NVIDIA Kepler generation CC 3.0"
-      echo "                 Kepler32       = NVIDIA Kepler generation CC 3.2"
-      echo "                 Kepler35       = NVIDIA Kepler generation CC 3.5"
-      echo "                 Kepler37       = NVIDIA Kepler generation CC 3.7"
-      echo "                 Maxwell50      = NVIDIA Maxwell generation CC 5.0"
-      echo "                 Maxwell52      = NVIDIA Maxwell generation CC 5.2"
-      echo "                 Maxwell53      = NVIDIA Maxwell generation CC 5.3"
-      echo "                 Pascal60       = NVIDIA Pascal generation CC 6.0"
-      echo "                 Pascal61       = NVIDIA Pascal generation CC 6.1"
+      echo "                 Kepler30        = NVIDIA Kepler generation CC 3.0"
+      echo "                 Kepler32        = NVIDIA Kepler generation CC 3.2"
+      echo "                 Kepler35        = NVIDIA Kepler generation CC 3.5"
+      echo "                 Kepler37        = NVIDIA Kepler generation CC 3.7"
+      echo "                 Maxwell50       = NVIDIA Maxwell generation CC 5.0"
+      echo "                 Maxwell52       = NVIDIA Maxwell generation CC 5.2"
+      echo "                 Maxwell53       = NVIDIA Maxwell generation CC 5.3"
+      echo "                 Pascal60        = NVIDIA Pascal generation CC 6.0"
+      echo "                 Pascal61        = NVIDIA Pascal generation CC 6.1"
+      echo "                 Volta70         = NVIDIA Volta generation CC 7.0"
+      echo "                 Volta72         = NVIDIA Volta generation CC 7.2"
       echo ""
       echo "--compiler=/Path/To/Compiler  Set the compiler."
       echo "--debug,-dbg:                 Enable Debugging."
@@ -153,6 +181,8 @@ do
       echo "                                build.  This will still set certain required"
       echo "                                flags via KOKKOS_CXXFLAGS (such as -fopenmp,"
       echo "                                --std=c++11, etc.)."
+      echo "--cxxstandard=[FLAGS]         Overwrite KOKKOS_CXX_STANDARD for library build and test"
+      echo "                                c++11 (default), c++14, c++17, c++1y, c++1z, c++2a"
       echo "--ldflags=[FLAGS]             Overwrite LDFLAGS for library build and test"
       echo "                                build. This will still set certain required"
       echo "                                flags via KOKKOS_LDFLAGS (such as -fopenmp,"
@@ -168,6 +198,9 @@ do
       echo "                                "
       echo "--with-cuda-options=[OPT]:    Additional options to CUDA:"
       echo "                                force_uvm, use_ldg, enable_lambda, rdc"
+      echo "--with-hpx-options=[OPT]:     Additional options to HPX:"
+      echo "                                enable_async_dispatch"
+      echo "--gcc-toolchain=/Path/To/GccRoot:  Set the gcc toolchain to use with clang (e.g. /usr)" 
       echo "--make-j=[NUM]:               DEPRECATED: call make with appropriate"
       echo "                                -j flag"
       exit 0
@@ -192,7 +225,7 @@ else
 fi
 
 if [ "${KOKKOS_PATH}"  = "${PWD}" ] || [ "${KOKKOS_PATH}"  = "${PWD}/" ]; then
-  echo "Running generate_makefile.sh in the Kokkos root directory is not allowed"
+  echo "Running generate_makefile.bash in the Kokkos root directory is not allowed"
   exit
 fi
 
@@ -201,8 +234,13 @@ KOKKOS_SRC_PATH=${KOKKOS_PATH}
 KOKKOS_SETTINGS="KOKKOS_SRC_PATH=${KOKKOS_SRC_PATH}"
 #KOKKOS_SETTINGS="KOKKOS_PATH=${KOKKOS_PATH}"
 
+# The double [[  ]] in the elif branch is not a typo
 if [ ${#COMPILER} -gt 0 ]; then
   KOKKOS_SETTINGS="${KOKKOS_SETTINGS} CXX=${COMPILER}"
+elif
+   [ ${#COMPILER} -eq 0 ] && [[ ${KOKKOS_DEVICES} =~ .*Cuda.* ]]; then
+  COMPILER="${KOKKOS_PATH}/bin/nvcc_wrapper"
+  KOKKOS_SETTINGS="${KOKKOS_SETTINGS} CXX=${COMPILER}"   
 fi
 
 if [ ${#KOKKOS_DEVICES} -gt 0 ]; then
@@ -223,6 +261,10 @@ fi
 
 if [ ${#CXXFLAGS} -gt 0 ]; then
   KOKKOS_SETTINGS="${KOKKOS_SETTINGS} CXXFLAGS=\"${CXXFLAGS}\""
+fi
+
+if [ ${#KOKKOS_CXX_STANDARD} -gt 0 ]; then
+  KOKKOS_SETTINGS="${KOKKOS_SETTINGS} KOKKOS_CXX_STANDARD=\"${KOKKOS_CXX_STANDARD}\""
 fi
 
 if [ ${#LDFLAGS} -gt 0 ]; then
@@ -254,12 +296,24 @@ if [ ${#QTHREADS_PATH} -gt 0 ]; then
   KOKKOS_SETTINGS="${KOKKOS_SETTINGS} QTHREADS_PATH=${QTHREADS_PATH}"
 fi
 
+if [ ${#HPX_PATH} -gt 0 ]; then
+    KOKKOS_SETTINGS="${KOKKOS_SETTINGS} HPX_PATH=${HPX_PATH}"
+fi
+
 if [ ${#KOKKOS_OPT} -gt 0 ]; then
   KOKKOS_SETTINGS="${KOKKOS_SETTINGS} KOKKOS_OPTIONS=${KOKKOS_OPT}"
 fi
 
 if [ ${#KOKKOS_CUDA_OPT} -gt 0 ]; then
   KOKKOS_SETTINGS="${KOKKOS_SETTINGS} KOKKOS_CUDA_OPTIONS=${KOKKOS_CUDA_OPT}"
+fi
+
+if [ ${#KOKKOS_HPX_OPT} -gt 0 ]; then
+    KOKKOS_SETTINGS="${KOKKOS_SETTINGS} KOKKOS_HPX_OPTIONS=${KOKKOS_HPX_OPT}"
+fi
+
+if [ ${#KOKKOS_GCC_TOOLCHAIN} -gt 0 ]; then
+  KOKKOS_SETTINGS="${KOKKOS_SETTINGS} KOKKOS_INTERNAL_GCC_TOOLCHAIN=${KOKKOS_GCC_TOOLCHAIN}"
 fi
 
 KOKKOS_SETTINGS_NO_KOKKOS_PATH="${KOKKOS_SETTINGS}"
@@ -273,7 +327,7 @@ fi
 
 mkdir -p install
 gen_makefile=Makefile.kokkos
-echo "#Makefile to satisfy existens of target kokkos-clean before installing the library" > install/${gen_makefile}
+echo "#Makefile to satisfy existence of target kokkos-clean before installing the library" > install/${gen_makefile}
 echo "kokkos-clean:" >> install/${gen_makefile}
 echo "" >> install/${gen_makefile}
 mkdir -p core
@@ -289,6 +343,7 @@ mkdir -p example
 mkdir -p example/fixture
 mkdir -p example/feint
 mkdir -p example/fenl
+mkdir -p example/make_buildlink
 mkdir -p example/tutorial
 
 if [ ${#KOKKOS_ENABLE_EXAMPLE_ICHOL} -gt 0 ]; then
@@ -388,6 +443,17 @@ echo "" >> example/fenl/Makefile
 echo "clean:" >> example/fenl/Makefile
 echo -e "\t\$(MAKE) -f ${KOKKOS_PATH}/example/fenl/Makefile ${KOKKOS_SETTINGS} clean" >> example/fenl/Makefile
 
+echo "KOKKOS_SETTINGS=${KOKKOS_SETTINGS}" > example/make_buildlink/Makefile
+echo "" >> example/make_buildlink/Makefile
+echo "build:" >> example/make_buildlink/Makefile
+echo -e "\t\$(MAKE) -f ${KOKKOS_PATH}/example/make_buildlink/Makefile ${KOKKOS_SETTINGS} build" >> example/make_buildlink/Makefile
+echo "" >> example/make_buildlink/Makefile
+echo "test: build" >> example/make_buildlink/Makefile
+echo -e "\t\$(MAKE) -f ${KOKKOS_PATH}/example/make_buildlink/Makefile ${KOKKOS_SETTINGS} test" >> example/make_buildlink/Makefile
+echo "" >> example/make_buildlink/Makefile
+echo "clean:" >> example/make_buildlink/Makefile
+echo -e "\t\$(MAKE) -f ${KOKKOS_PATH}/example/make_buildlink/Makefile ${KOKKOS_SETTINGS} clean" >> example/make_buildlink/Makefile
+
 echo "KOKKOS_SETTINGS=${KOKKOS_SETTINGS}" > example/tutorial/Makefile
 echo "" >> example/tutorial/Makefile
 echo "build:" >> example/tutorial/Makefile
@@ -441,9 +507,11 @@ echo -e "\t\$(MAKE) -C containers/unit_tests" >> Makefile
 echo -e "\t\$(MAKE) -C containers/performance_tests" >> Makefile
 echo -e "\t\$(MAKE) -C algorithms/unit_tests" >> Makefile
 if [ ${KOKKOS_DO_EXAMPLES} -gt 0 ]; then
+$()
 echo -e "\t\$(MAKE) -C example/fixture" >> Makefile
 echo -e "\t\$(MAKE) -C example/feint" >> Makefile
 echo -e "\t\$(MAKE) -C example/fenl" >> Makefile
+echo -e "\t\$(MAKE) -C example/make_buildlink build" >> Makefile
 echo -e "\t\$(MAKE) -C example/tutorial build" >> Makefile
 fi
 echo "" >> Makefile
@@ -457,6 +525,7 @@ if [ ${KOKKOS_DO_EXAMPLES} -gt 0 ]; then
 echo -e "\t\$(MAKE) -C example/fixture test" >> Makefile
 echo -e "\t\$(MAKE) -C example/feint test" >> Makefile
 echo -e "\t\$(MAKE) -C example/fenl test" >> Makefile
+echo -e "\t\$(MAKE) -C example/make_buildlink test" >> Makefile
 echo -e "\t\$(MAKE) -C example/tutorial test" >> Makefile
 fi
 echo "" >> Makefile
@@ -476,6 +545,7 @@ if [ ${KOKKOS_DO_EXAMPLES} -gt 0 ]; then
 echo -e "\t\$(MAKE) -C example/fixture clean" >> Makefile
 echo -e "\t\$(MAKE) -C example/feint clean" >> Makefile
 echo -e "\t\$(MAKE) -C example/fenl clean" >> Makefile
+echo -e "\t\$(MAKE) -C example/make_buildlink clean" >> Makefile
 echo -e "\t\$(MAKE) -C example/tutorial clean" >> Makefile
 fi
 echo -e "\tcd core; \\" >> Makefile

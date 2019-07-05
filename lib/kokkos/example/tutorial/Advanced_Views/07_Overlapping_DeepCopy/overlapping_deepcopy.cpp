@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -129,7 +129,7 @@ int main(int argc, char * argv[]) {
     h_a(i) = 0.0;
   });
   Kokkos::parallel_for(Kokkos::RangePolicy<Kokkos::OpenMP>(0,size),ComputeAHost(h_a,h_b));
-  Kokkos::OpenMP::fence();
+  Kokkos::OpenMP().fence();
   if(synch==1)
     Kokkos::deep_copy(Kokkos::OpenMP(), d_tmp,h_a);
   if(synch==2)

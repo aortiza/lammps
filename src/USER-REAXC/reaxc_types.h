@@ -27,19 +27,23 @@
 #ifndef __REAX_TYPES_H_
 #define __REAX_TYPES_H_
 
+#include <mpi.h>
 #include "lmptype.h"
 
-#include <ctype.h>
-#include <math.h>
-#include <mpi.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "sys/time.h"
-#include <time.h>
+#include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <sys/time.h>
+#include "accelerator_kokkos.h"
+
+
+namespace LAMMPS_NS { class Error;}
 
 #if defined LMP_USER_OMP
-#define OMP_TIMING 1
+#define OMP_TIMING 0
 
 #ifdef OMP_TIMING
 // pkcoff timing fields
@@ -391,8 +395,8 @@ typedef struct
   double ghost_cutoff;
 } boundary_cutoff;
 
-using LAMMPS_NS::Pair;
 
+struct _LR_lookup_table;  // forward declaration
 struct _reax_system
 {
   reax_interaction reax_param;
@@ -410,10 +414,13 @@ struct _reax_system
   boundary_cutoff  bndry_cuts;
   reax_atom       *my_atoms;
 
-  class Pair *pair_ptr;
+  class LAMMPS_NS::Error *error_ptr;
+  class LAMMPS_NS::Pair *pair_ptr;
   int my_bonds;
   int mincap;
   double safezone, saferzone;
+
+  _LR_lookup_table **LR;
 
   int omp_active;
 };
@@ -487,6 +494,8 @@ typedef struct
 
   int lgflag;
   int enobondsflag;
+  class LAMMPS_NS::Error *error_ptr;
+  int me;
 
 } control_params;
 
@@ -773,6 +782,7 @@ struct _reax_list
 
   int type;
   list_type select;
+  class LAMMPS_NS::Error     *error_ptr;
 };
 typedef _reax_list  reax_list;
 
@@ -830,6 +840,10 @@ struct LR_data
   double e_vdW, CEvd;
   double e_ele, CEclmb;
 
+  LAMMPS_INLINE
+  LR_data() {}
+
+  LAMMPS_INLINE
   void operator = (const LR_data& rhs) {
     H      = rhs.H;
     e_vdW  = rhs.e_vdW;
@@ -837,6 +851,7 @@ struct LR_data
     e_ele  = rhs.e_ele;
     CEclmb = rhs.CEclmb;
   }
+  LAMMPS_INLINE
   void operator = (const LR_data& rhs) volatile {
     H      = rhs.H;
     e_vdW  = rhs.e_vdW;
@@ -850,12 +865,18 @@ struct LR_data
 struct cubic_spline_coef
 {
   double a, b, c, d;
+
+  LAMMPS_INLINE
+  cubic_spline_coef() {}
+
+  LAMMPS_INLINE
   void operator = (const cubic_spline_coef& rhs) {
     a = rhs.a;
     b = rhs.b;
     c = rhs.c;
     d = rhs.d;
   }
+  LAMMPS_INLINE
   void operator = (const cubic_spline_coef& rhs) volatile {
     a = rhs.a;
     b = rhs.b;
@@ -866,7 +887,7 @@ struct cubic_spline_coef
 
 
 
-typedef struct
+typedef struct _LR_lookup_table
 {
   double xmin, xmax;
   int n;
@@ -880,7 +901,6 @@ typedef struct
   cubic_spline_coef *vdW, *CEvd;
   cubic_spline_coef *ele, *CEclmb;
 } LR_lookup_table;
-extern LR_lookup_table **LR;
 
 /* function pointer defs */
 typedef void (*evolve_function)(reax_system*, control_params*,

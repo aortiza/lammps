@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -453,15 +453,18 @@ struct TestReduceCombinatoricalInstantiation {
 
     result_view() = 0;
     CallParallelReduce( args..., result_view );
+    Kokkos::fence();
     ASSERT_EQ( expected_result, result_view() );
 
     value = 0;
     CallParallelReduce( args..., Kokkos::View< double, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> >( &value ) );
+    Kokkos::fence();
     ASSERT_EQ( expected_result, value );
 
     result_view() = 0;
     const Kokkos::View< double, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > result_view_const_um = result_view;
     CallParallelReduce( args..., result_view_const_um );
+    Kokkos::fence();
     ASSERT_EQ( expected_result, result_view_const_um() );
 
     value = 0;
@@ -526,18 +529,21 @@ struct TestReduceCombinatoricalInstantiation {
     h_r() = 0;
     Kokkos::deep_copy( result_view, h_r );
     CallParallelReduce( args..., Test::ReduceCombinatorical::FunctorScalarFinal< ISTEAM >( result_view ) );
+    Kokkos::fence();
     Kokkos::deep_copy( h_r, result_view );
     ASSERT_EQ( expected_result, h_r() );
 
     h_r() = 0;
     Kokkos::deep_copy( result_view, h_r );
     CallParallelReduce( args..., Test::ReduceCombinatorical::FunctorScalarJoinFinal< ISTEAM >( result_view ) );
+    Kokkos::fence();
     Kokkos::deep_copy( h_r, result_view );
     ASSERT_EQ( expected_result, h_r() );
 
     h_r() = 0;
     Kokkos::deep_copy( result_view, h_r );
     CallParallelReduce( args..., Test::ReduceCombinatorical::FunctorScalarJoinFinalInit< ISTEAM >( result_view ) );
+    Kokkos::fence();
     Kokkos::deep_copy( h_r, result_view );
     ASSERT_EQ( expected_result, h_r() );
   }
@@ -559,17 +565,31 @@ struct TestReduceCombinatoricalInstantiation {
   }
 
   template< class ... Args >
-  static void AddPolicy( Args... args ) {
+  static void AddPolicy_1( Args... args ) {
     int N = 1000;
     Kokkos::RangePolicy< ExecSpace > policy( 0, N );
 
     AddFunctorLambdaRange( args..., 1000 );
     AddFunctorLambdaRange( args..., N );
     AddFunctorLambdaRange( args..., policy );
+  }
+
+  template< class ... Args >
+  static void AddPolicy_2( Args... args ) {
+    int N = 1000;
+    Kokkos::RangePolicy< ExecSpace > policy( 0, N );
+
     AddFunctorLambdaRange( args..., Kokkos::RangePolicy< ExecSpace >( 0, N ) );
     AddFunctorLambdaRange( args..., Kokkos::RangePolicy< ExecSpace, Kokkos::Schedule<Kokkos::Dynamic> >( 0, N ) );
     AddFunctorLambdaRange( args..., Kokkos::RangePolicy< ExecSpace, Kokkos::Schedule<Kokkos::Static> >( 0, N ).set_chunk_size( 10 ) );
     AddFunctorLambdaRange( args..., Kokkos::RangePolicy< ExecSpace, Kokkos::Schedule<Kokkos::Dynamic> >( 0, N ).set_chunk_size( 10 ) );
+
+  }
+
+  template< class ... Args >
+  static void AddPolicy_3( Args... args ) {
+    int N = 1000;
+    Kokkos::RangePolicy< ExecSpace > policy( 0, N );
 
     AddFunctorLambdaTeam( args..., Kokkos::TeamPolicy< ExecSpace >( N, Kokkos::AUTO ) );
     AddFunctorLambdaTeam( args..., Kokkos::TeamPolicy< ExecSpace, Kokkos::Schedule<Kokkos::Dynamic> >( N, Kokkos::AUTO ) );
@@ -577,20 +597,51 @@ struct TestReduceCombinatoricalInstantiation {
     AddFunctorLambdaTeam( args..., Kokkos::TeamPolicy< ExecSpace, Kokkos::Schedule<Kokkos::Dynamic> >( N, Kokkos::AUTO ).set_chunk_size( 10 ) );
   }
 
-  static void execute_a() {
-    AddPolicy();
+  static void execute_a1() {
+    AddPolicy_1();
   }
 
-  static void execute_b() {
+  static void execute_b1() {
     std::string s( "Std::String" );
-    AddPolicy( s.c_str() );
-    AddPolicy( "Char Constant" );
+    AddPolicy_1( s.c_str() );
+    AddPolicy_1( "Char Constant" );
   }
 
-  static void execute_c() {
+  static void execute_c1() {
     std::string s( "Std::String" );
-    AddPolicy( s );
+    AddPolicy_1( s );
   }
+
+  static void execute_a2() {
+    AddPolicy_2();
+  }
+
+  static void execute_b2() {
+    std::string s( "Std::String" );
+    AddPolicy_2( s.c_str() );
+    AddPolicy_2( "Char Constant" );
+  }
+
+  static void execute_c2() {
+    std::string s( "Std::String" );
+    AddPolicy_2( s );
+  }
+
+  static void execute_a3() {
+    AddPolicy_1();
+  }
+
+  static void execute_b3() {
+    std::string s( "Std::String" );
+    AddPolicy_1( s.c_str() );
+    AddPolicy_1( "Char Constant" );
+  }
+
+  static void execute_c3() {
+    std::string s( "Std::String" );
+    AddPolicy_1( s );
+  }
+
 };
 
 } // namespace Test

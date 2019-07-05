@@ -21,6 +21,7 @@ namespace LAMMPS_NS {
 
 class Neighbor : protected Pointers {
  public:
+  enum{NSQ,BIN,MULTI};
   int style;                       // 0,1,2 = nsq, bin, multi
   int every;                       // build every this many steps
   int delay;                       // delay build for this many steps
@@ -111,7 +112,7 @@ class Neighbor : protected Pointers {
   int decide();                     // decide whether to build or not
   virtual int check_distance();     // check max distance moved since last build
   void setup_bins();                // setup bins based on box and cutoff
-  virtual void build(int topoflag=1);  // build all perpetual neighbor lists
+  virtual void build(int);          // build all perpetual neighbor lists
   virtual void build_topology();    // pairwise topology neighbor lists
   void build_one(class NeighList *list, int preflag=0);
                                     // create a one-time pairwise neigh list
@@ -125,6 +126,8 @@ class Neighbor : protected Pointers {
 
   bigint memory_usage();
 
+  bigint last_setup_bins;          // step of last neighbor::setup_bins() call
+
  protected:
   int me,nprocs;
   int firsttime;                   // flag for calling init_styles() only once
@@ -137,8 +140,6 @@ class Neighbor : protected Pointers {
   int restart_check;               // 1 if restart enabled, 0 if no
   int fix_check;                   // # of fixes that induce reneigh
   int *fixchecklist;               // which fixes to check
-
-  bigint last_setup_bins;          // step of last neighbor::setup_bins() call
 
   double triggersq;                // trigger = build when atom moves this dist
 
@@ -232,6 +233,7 @@ class Neighbor : protected Pointers {
   virtual void init_ex_bit_kokkos() {}
   virtual void init_ex_mol_bit_kokkos() {}
   virtual void grow_ex_mol_intra_kokkos() {}
+  virtual void set_binsize_kokkos() {}
 };
 
 namespace NeighConst {
@@ -310,21 +312,37 @@ consistently by both the short-range pair style and the long-range
 solver.  This is not done for exclusions of charged atom pairs via the
 neigh_modify exclude command.
 
+E: Cannot request an occasional binned neighbor list with ghost info
+
+UNDOCUMENTED
+
+E: Requested neighbor bin option does not exist
+
+UNDOCUMENTED
+
+E: Requested neighbor stencil method does not exist
+
+UNDOCUMENTED
+
+E: Requested neighbor pair method does not exist
+
+UNDOCUMENTED
+
+E: Could not assign bin method to neighbor stencil
+
+UNDOCUMENTED
+
+E: Could not assign bin method to neighbor pair
+
+UNDOCUMENTED
+
+E: Could not assign stencil method to neighbor pair
+
+UNDOCUMENTED
+
 E: Neighbor include group not allowed with ghost neighbors
 
 This is a current restriction within LAMMPS.
-
-E: Neighbor multi not yet enabled for ghost neighbors
-
-This is a current restriction within LAMMPS.
-
-E: Neighbor multi not yet enabled for granular
-
-Self-explanatory.
-
-E: Neighbor multi not yet enabled for rRESPA
-
-Self-explanatory.
 
 E: Too many local+ghost atoms for neighbor list
 
@@ -336,22 +354,9 @@ E: Trying to build an occasional neighbor list before initialization completed
 
 This is not allowed.  Source code caller needs to be modified.
 
-E: Domain too large for neighbor bins
+E: Neighbor build one invoked on perpetual list
 
-The domain has become extremely large so that neighbor bins cannot be
-used.  Most likely, one or more atoms have been blown out of the
-simulation box to a great distance.
-
-E: Cannot use neighbor bins - box size << cutoff
-
-Too many neighbor bins will be created.  This typically happens when
-the simulation box is very small in some dimension, compared to the
-neighbor cutoff.  Use the "nsq" style instead of "bin" style.
-
-E: Too many neighbor bins
-
-This is likely due to an immense simulation box that has blown up
-to a large size.
+UNDOCUMENTED
 
 E: Illegal ... command
 
@@ -370,5 +375,38 @@ Self-explanatory.
 E: Neigh_modify exclude molecule requires atom attribute molecule
 
 Self-explanatory.
+
+E: Unable to find group-group exclusion
+
+UNDOCUMENTED
+
+U: Neighbor multi not yet enabled for ghost neighbors
+
+This is a current restriction within LAMMPS.
+
+U: Neighbor multi not yet enabled for granular
+
+Self-explanatory.
+
+U: Neighbor multi not yet enabled for rRESPA
+
+Self-explanatory.
+
+U: Domain too large for neighbor bins
+
+The domain has become extremely large so that neighbor bins cannot be
+used.  Most likely, one or more atoms have been blown out of the
+simulation box to a great distance.
+
+U: Cannot use neighbor bins - box size << cutoff
+
+Too many neighbor bins will be created.  This typically happens when
+the simulation box is very small in some dimension, compared to the
+neighbor cutoff.  Use the "nsq" style instead of "bin" style.
+
+U: Too many neighbor bins
+
+This is likely due to an immense simulation box that has blown up
+to a large size.
 
 */

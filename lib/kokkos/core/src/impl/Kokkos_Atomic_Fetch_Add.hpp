@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -90,10 +90,12 @@ __inline__ __device__
 T atomic_fetch_add( volatile T * const dest ,
   typename Kokkos::Impl::enable_if< sizeof(T) == sizeof(int) , const T >::type val )
 {
-  union U {
+  // to work around a bug in the clang cuda compiler, the name here needs to be
+  // different from the one internal to the other overloads
+  union U1 {
     int i ;
     T t ;
-    KOKKOS_INLINE_FUNCTION U() {};
+    KOKKOS_INLINE_FUNCTION U1() {};
   } assume , oldval , newval ;
 
   oldval.t = *dest ;
@@ -113,10 +115,12 @@ T atomic_fetch_add( volatile T * const dest ,
   typename Kokkos::Impl::enable_if< sizeof(T) != sizeof(int) &&
                                     sizeof(T) == sizeof(unsigned long long int) , const T >::type val )
 {
-  union U {
+  // to work around a bug in the clang cuda compiler, the name here needs to be
+  // different from the one internal to the other overloads
+  union U2 {
     unsigned long long int i ;
     T t ;
-    KOKKOS_INLINE_FUNCTION U() {};
+    KOKKOS_INLINE_FUNCTION U2() {};
   } assume , oldval , newval ;
 
   oldval.t = *dest ;
@@ -143,7 +147,12 @@ T atomic_fetch_add( volatile T * const dest ,
   T return_val;
   // This is a way to (hopefully) avoid dead lock in a warp
   int done = 0;
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+  unsigned int mask = KOKKOS_IMPL_CUDA_ACTIVEMASK;
+  unsigned int active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask,1);
+#else
   unsigned int active = KOKKOS_IMPL_CUDA_BALLOT(1);
+#endif
   unsigned int done_active = 0;
   while (active!=done_active) {
     if(!done) {
@@ -155,7 +164,12 @@ T atomic_fetch_add( volatile T * const dest ,
         done = 1;
       }
     }
+
+#ifdef KOKKOS_IMPL_CUDA_SYNCWARP_NEEDS_MASK
+    done_active = KOKKOS_IMPL_CUDA_BALLOT_MASK(mask,done);
+#else
     done_active = KOKKOS_IMPL_CUDA_BALLOT(done);
+#endif
   }
   return return_val;
 }
@@ -166,7 +180,7 @@ T atomic_fetch_add( volatile T * const dest ,
 #if !defined(__CUDA_ARCH__) || defined(KOKKOS_IMPL_CUDA_CLANG_WORKAROUND)
 #if defined(KOKKOS_ENABLE_GNU_ATOMICS) || defined(KOKKOS_ENABLE_INTEL_ATOMICS)
 
-#if defined( KOKKOS_ENABLE_ASM ) && defined ( KOKKOS_ENABLE_ISA_X86_64 )
+#if defined( KOKKOS_ENABLE_ASM ) && (defined(KOKKOS_ENABLE_ISA_X86_64) || defined(KOKKOS_KNL_USE_ASM_WORKAROUND))
 inline
 int atomic_fetch_add( volatile int * dest , const int val )
 {
@@ -358,10 +372,30 @@ T atomic_fetch_add( volatile T * const dest , const T val )
   return retval;
 }
 
+#elif defined( KOKKOS_ENABLE_SERIAL_ATOMICS )
+
+template< typename T >
+T atomic_fetch_add( volatile T * const dest_v , typename std::add_const<T>::type val )
+{
+  T* dest = const_cast<T*>(dest_v);
+  T retval = *dest;
+  *dest += val;
+  return retval;
+}
+
 #endif
 #endif
 #endif // !defined ROCM_ATOMICS
 //----------------------------------------------------------------------------
+
+// dummy for non-CUDA Kokkos headers being processed by NVCC
+#if defined(__CUDA_ARCH__) && !defined(KOKKOS_ENABLE_CUDA)
+template< typename T >
+__inline__ __device__
+T atomic_fetch_add(volatile T* const, Kokkos::Impl::identity_t<T>) {
+  return T();
+}
+#endif
 
 // Simpler version of atomic_fetch_add without the fetch
 template <typename T>

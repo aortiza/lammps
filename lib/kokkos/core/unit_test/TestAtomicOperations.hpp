@@ -35,7 +35,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  H. Carter Edwards (hcedwar@sandia.gov)
+// Questions? Contact Christian R. Trott (crtrott@sandia.gov)
 //
 // ************************************************************************
 //@HEADER
@@ -113,13 +113,13 @@ T MaxAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct MaxFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -191,13 +191,13 @@ T MinAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct MinFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -268,13 +268,13 @@ T IncAtomic( T i0 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct IncFunctor< T, execution_space > f( i0 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -345,13 +345,13 @@ T DecAtomic( T i0 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct DecFunctor< T, execution_space > f( i0 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -423,13 +423,13 @@ T MulAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct MulFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -501,13 +501,13 @@ T DivAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct DivFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -536,7 +536,9 @@ bool DivAtomicTest( T i0, T i1 )
 
   bool passed = true;
 
-  if ( resSerial != res ) {
+  using std::abs;
+  using Kokkos::abs;
+  if ( abs( (resSerial-res) * 1.) > 1e-5 ) {
     passed = false;
 
     std::cout << "Loop<"
@@ -579,13 +581,13 @@ T ModAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct ModFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -657,13 +659,13 @@ T AndAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct AndFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -735,13 +737,13 @@ T OrAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct OrFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -813,13 +815,13 @@ T XorAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct XorFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -891,13 +893,13 @@ T LShiftAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct LShiftFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -969,13 +971,13 @@ T RShiftAtomic( T i0, T i1 ) {
 
   f_init.data = data;
   Kokkos::parallel_for( 1, f_init );
-  execution_space::fence();
+  execution_space().fence();
 
   struct RShiftFunctor< T, execution_space > f( i0, i1 );
 
   f.data = data;
   Kokkos::parallel_for( 1, f );
-  execution_space::fence();
+  execution_space().fence();
 
   Kokkos::deep_copy( h_data, data );
   T val = h_data();
@@ -1058,83 +1060,3 @@ bool AtomicOperationsTestNonIntegralType( int i0, int i1, int test )
 
 }
 
-namespace Test {
-
-TEST_F( TEST_CATEGORY , atomic_operations )
-{
-  const int start = 1; // Avoid zero for division.
-  const int end = 11;
-  for ( int i = start; i < end; ++i )
-  {
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 5 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 6 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 7 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 8 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 9 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 11 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< int, TEST_EXECSPACE >( start, end - i, 12 ) ) );
-
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 5 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 6 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 7 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 8 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 9 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 11 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned int, TEST_EXECSPACE >( start, end - i, 12 ) ) );
-
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 5 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 6 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 7 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 8 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 9 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 11 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long int, TEST_EXECSPACE >( start, end - i, 12 ) ) );
-
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 5 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 6 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 7 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 8 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 9 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 11 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< unsigned long int, TEST_EXECSPACE >( start, end - i, 12 ) ) );
-
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 5 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 6 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 7 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 8 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 9 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 11 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestIntegralType< long long int, TEST_EXECSPACE >( start, end - i, 12 ) ) );
-
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< double, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< double, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< double, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< double, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< float, TEST_EXECSPACE >( start, end - i, 1 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< float, TEST_EXECSPACE >( start, end - i, 2 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< float, TEST_EXECSPACE >( start, end - i, 3 ) ) );
-    ASSERT_TRUE( ( TestAtomicOperations::AtomicOperationsTestNonIntegralType< float, TEST_EXECSPACE >( start, end - i, 4 ) ) );
-  }
-}
-} // namespace Test

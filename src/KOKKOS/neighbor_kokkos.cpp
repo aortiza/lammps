@@ -30,10 +30,9 @@
 #include "style_nstencil.h"
 #include "style_npair.h"
 #include "style_ntopo.h"
+#include "comm.h"
 
 using namespace LAMMPS_NS;
-
-enum{NSQ,BIN,MULTI};     // also in neigh_list.cpp
 
 /* ---------------------------------------------------------------------- */
 
@@ -98,7 +97,7 @@ void NeighborKokkos::init_cutneighsq_kokkos(int n)
 
 void NeighborKokkos::create_kokkos_list(int i)
 {
-  if (style != BIN)
+  if (style != Neighbor::BIN)
     error->all(FLERR,"KOKKOS package only supports 'bin' neighbor lists");
 
   if (requests[i]->kokkos_device) {
@@ -265,7 +264,7 @@ void NeighborKokkos::build_kokkos(int topoflag)
     atomKK->sync(ExecutionSpaceFromDevice<DeviceType>::space,X_MASK);
     x = atomKK->k_x;
     if (includegroup) nlocal = atom->nfirst;
-    int maxhold_kokkos = xhold.view<DeviceType>().dimension_0();
+    int maxhold_kokkos = xhold.view<DeviceType>().extent(0);
     if (atom->nmax > maxhold || maxhold_kokkos < maxhold) {
       maxhold = atom->nmax;
       xhold = DAT::tdual_x_array("neigh:xhold",maxhold);
@@ -300,7 +299,7 @@ void NeighborKokkos::build_kokkos(int topoflag)
   // if bin then, atoms may have moved outside of proc domain & bin extent,
   //   leading to errors or even a crash
 
-  if (style != NSQ) {
+  if (style != Neighbor::NSQ) {
     for (int i = 0; i < nbin; i++) {
       neigh_bin[i]->bin_atoms_setup(nall);
       neigh_bin[i]->bin_atoms();
@@ -362,6 +361,14 @@ void NeighborKokkos::modify_mol_intra_grow_kokkos(){
 }
 
 /* ---------------------------------------------------------------------- */
+void NeighborKokkos::set_binsize_kokkos() {
+  if (!binsizeflag && lmp->kokkos->ngpus > 0) {
+    binsize_user = cutneighmax;
+    binsizeflag = 1;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
 
 void NeighborKokkos::init_topology() {
   if (device_flag) {
@@ -386,7 +393,7 @@ void NeighborKokkos::build_topology() {
     k_improperlist = neighbond_device.k_improperlist;
 
     // Transfer topology neighbor lists to Host for non-Kokkos styles
- 
+
     if (force->bond && force->bond->execution_space == Host)
       k_bondlist.sync<LMPHostType>();
     if (force->angle && force->angle->execution_space == Host)
