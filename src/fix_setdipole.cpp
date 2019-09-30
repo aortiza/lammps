@@ -37,10 +37,10 @@ enum{NONE,CONSTANT,EQUAL,ATOM};
 
 FixSetDipole::FixSetDipole(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg),
-  xstr(NULL), ystr(NULL), zstr(NULL), list(NULL)
+  xstr(NULL), ystr(NULL), zstr(NULL), iterstr(NULL), list(NULL)
 {
   if (narg < 7 ) error->all(FLERR,"Illegal fix setdipole command");
-  xstr = ystr = zstr = NULL;
+  xstr = ystr = zstr = iterstr = NULL;
   
   // field vector component
   if (strstr(arg[3],"v_") == arg[3]) {
@@ -83,7 +83,6 @@ FixSetDipole::FixSetDipole(LAMMPS *lmp, int narg, char **arg) :
     iterstyle = NONE;
   } else {
     itervalue = force->numeric(FLERR,arg[6]);
-    itervalue = force->numeric(FLERR,arg[6]);
     iterstyle = CONSTANT;
   }
 
@@ -119,7 +118,6 @@ int FixSetDipole::setmask()
 
 void FixSetDipole::init()
 {
-
   if (xstr) {
     xvar = input->variable->find(xstr);
     if (xvar < 0)
@@ -144,7 +142,6 @@ void FixSetDipole::init()
     else if (input->variable->atomstyle(zvar)) zstyle = ATOM;
     else error->all(FLERR,"Variable for fix setdipole is invalid style");
   }
-  
   // max_iter
   if (iterstr) {
     itervar = input->variable->find(iterstr);
@@ -155,9 +152,9 @@ void FixSetDipole::init()
     else error->all(FLERR,"Variable for fix setdipole is invalid style");
   }
   
-  if (xstyle == ATOM || ystyle == ATOM || zstyle == ATOM)
+  if (xstyle == ATOM || ystyle == ATOM || zstyle == ATOM || iterstyle == ATOM)
     varflag = ATOM;
-  else if (xstyle == EQUAL || ystyle == EQUAL || zstyle == EQUAL)
+  else if (xstyle == EQUAL || ystyle == EQUAL || zstyle == EQUAL || iterstyle == EQUAL)
     varflag = EQUAL;
   else varflag = CONSTANT;
   
@@ -284,6 +281,9 @@ void FixSetDipole::post_force(int vflag)
 		if (zstyle == EQUAL) zvalue = input->variable->compute_equal(zvar);
 		else if (zstyle == ATOM)
 		  input->variable->compute_atom(zvar,igroup,&sforce[0][2],3,0);
+        if (iterstyle == EQUAL) itervalue = input->variable->compute_equal(itervar);
+		else if (iterstyle == ATOM)
+		  input->variable->compute_atom(itervar,igroup,&sforce[0][2],3,0);
 
 		modify->addstep_compute(update->ntimestep + 1);
 		
@@ -293,6 +293,7 @@ void FixSetDipole::post_force(int vflag)
  				if (xstyle == ATOM) xvalue = sforce[i][0];
 				if (ystyle == ATOM) yvalue = sforce[i][1];
 				if (zstyle == ATOM) zvalue = sforce[i][2];
+                if (iterstyle == ATOM) itervalue = sforce[i][2];
 			}
 		
 	}
